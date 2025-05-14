@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-atool - A command line program for Confluence page management.
+ctag - A command line tool for managing tags on Confluence pages in bulk.
 
 This module serves as the entry point for the application.
 """
@@ -13,7 +13,20 @@ import logging
 import click
 from dotenv import load_dotenv
 from atlassian import Confluence
-from src.engine import SyncEngine
+from typing import List, Dict, Optional
+
+# Import our modules
+from src.tags import TagManager
+from src.cql import CQLProcessor
+from src.interactive import InteractiveHandler
+from src.utils import clean_title, sanitize_text
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Required environment variables
 REQUIRED_ENV_VARS = {
@@ -48,14 +61,12 @@ def check_environment():
 @click.pass_context
 def cli(ctx, progress, recurse, dry_run):
     """
-    atool - Synchronize Confluence pages with your local filesystem.
+    ctag - Manage Confluence page tags in bulk.
 
     This tool allows you to:
-    - Pull Confluence pages to your local filesystem
-    - Push local changes back to Confluence
-    - Track page history and changes
-    - Handle page renames and moves
-    - Sync attachments
+    - Add, remove, or replace tags on Confluence pages in bulk
+    - Use CQL queries to select pages based on various criteria
+    - Interactively confirm each action before execution
 
     Configuration:
     Create a .env file with:
@@ -64,8 +75,9 @@ def cli(ctx, progress, recurse, dry_run):
     - ATLASSIAN_TOKEN: Your API token
 
     Example Usage:
-    $ atool pull "https://<confluence-url>/wiki/spaces/SPACE/pages/123" ./docs
-    $ atool push ./docs "https://<confluence-url>/wiki/spaces/SPACE/pages/123"
+    $ ctag add "space = DOCS" tag1 tag2 tag3
+    $ ctag remove "title ~ 'Project*'" tag1 tag2 --interactive
+    $ ctag replace "lastmodified > -7d" old1=new1 old2=new2
     """
     # Load environment variables from .env file
     load_dotenv()
@@ -75,14 +87,225 @@ def cli(ctx, progress, recurse, dry_run):
 
     # Initialize the context object with our options
     ctx.ensure_object(dict)
+    
+    # Create Confluence client
+    confluence = Confluence(
+        url=os.environ["CONFLUENCE_URL"],
+        username=os.environ["CONFLUENCE_USERNAME"],
+        password=os.environ["ATLASSIAN_TOKEN"],
+        cloud=True  # Set to False for server installations
+    )
+    
     ctx.obj.update({
         "PROGRESS": progress,
         "RECURSE": recurse,
         "DRY_RUN": dry_run,
         "CONFLUENCE_URL": os.environ["CONFLUENCE_URL"],
         "CONFLUENCE_USERNAME": os.environ["CONFLUENCE_USERNAME"],
-        "ATLASSIAN_TOKEN": os.environ["ATLASSIAN_TOKEN"]
+        "ATLASSIAN_TOKEN": os.environ["ATLASSIAN_TOKEN"],
+        "CONFLUENCE": confluence
     })
+
+@cli.command()
+@click.argument('cql_expression')
+@click.argument('tags', nargs=-1, required=True)
+@click.option('--interactive', is_flag=True, help="Confirm each action interactively")
+@click.option('--abort-key', default='q', help="Key to abort all operations in interactive mode")
+@click.pass_context
+def add(ctx, cql_expression, tags, interactive, abort_key):
+    """
+    Add tags to pages matching CQL expression.
+    
+    CQL_EXPRESSION is a Confluence Query Language expression.
+    TAGS are one or more tags to add to matching pages.
+    
+    Example:
+        ctag add "space = DOCS" tag1 tag2 tag3
+    """
+    confluence = ctx.obj['CONFLUENCE']
+    dry_run = ctx.obj['DRY_RUN']
+    
+    # Initialize our processors
+    cql_processor = CQLProcessor(confluence)
+    tag_manager = TagManager(confluence)
+    
+    # Get matching pages
+    click.echo(f"Finding pages matching: {cql_expression}")
+    pages = cql_processor.get_all_results(cql_expression)
+    
+    if not pages:
+        click.echo("No pages found matching the CQL expression.")
+        return
+    
+    click.echo(f"Found {len(pages)} matching pages.")
+    
+    if dry_run:
+        click.echo("DRY RUN: No changes will be made.")
+        for page in pages:
+            title = sanitize_text(page.get('title', 'Unknown'))
+            space = page.get('space', {}).get('key', 'Unknown')
+            click.echo(f"Would add tags {list(tags)} to '{title}' (Space: {space})")
+        return
+    
+    # Set up interactive handler if needed
+    interactive_handler = None
+    if interactive:
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
+    
+    # Process the pages
+    results = tag_manager.process_pages(
+        pages=pages,
+        action='add',
+        tags=list(tags),
+        interactive=interactive,
+        interactive_handler=interactive_handler
+    )
+    
+    # Display results
+    click.echo(f"\nResults:")
+    click.echo(f"  Total pages: {results['total']}")
+    click.echo(f"  Processed: {results['processed']}")
+    click.echo(f"  Skipped: {results['skipped']}")
+    click.echo(f"  Successful: {results['success']}")
+    click.echo(f"  Failed: {results['failed']}")
+
+
+@cli.command()
+@click.argument('cql_expression')
+@click.argument('tags', nargs=-1, required=True)
+@click.option('--interactive', is_flag=True, help="Confirm each action interactively")
+@click.option('--abort-key', default='q', help="Key to abort all operations in interactive mode")
+@click.pass_context
+def remove(ctx, cql_expression, tags, interactive, abort_key):
+    """
+    Remove tags from pages matching CQL expression.
+    
+    CQL_EXPRESSION is a Confluence Query Language expression.
+    TAGS are one or more tags to remove from matching pages.
+    
+    Example:
+        ctag remove "space = DOCS" tag1 tag2
+    """
+    confluence = ctx.obj['CONFLUENCE']
+    dry_run = ctx.obj['DRY_RUN']
+    
+    # Initialize our processors
+    cql_processor = CQLProcessor(confluence)
+    tag_manager = TagManager(confluence)
+    
+    # Get matching pages
+    click.echo(f"Finding pages matching: {cql_expression}")
+    pages = cql_processor.get_all_results(cql_expression)
+    
+    if not pages:
+        click.echo("No pages found matching the CQL expression.")
+        return
+    
+    click.echo(f"Found {len(pages)} matching pages.")
+    
+    if dry_run:
+        click.echo("DRY RUN: No changes will be made.")
+        for page in pages:
+            title = sanitize_text(page.get('title', 'Unknown'))
+            space = page.get('space', {}).get('key', 'Unknown')
+            click.echo(f"Would remove tags {list(tags)} from '{title}' (Space: {space})")
+        return
+    
+    # Set up interactive handler if needed
+    interactive_handler = None
+    if interactive:
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
+    
+    # Process the pages
+    results = tag_manager.process_pages(
+        pages=pages,
+        action='remove',
+        tags=list(tags),
+        interactive=interactive,
+        interactive_handler=interactive_handler
+    )
+    
+    # Display results
+    click.echo(f"\nResults:")
+    click.echo(f"  Total pages: {results['total']}")
+    click.echo(f"  Processed: {results['processed']}")
+    click.echo(f"  Skipped: {results['skipped']}")
+    click.echo(f"  Successful: {results['success']}")
+    click.echo(f"  Failed: {results['failed']}")
+
+
+@cli.command()
+@click.argument('cql_expression')
+@click.argument('tag_pairs', nargs=-1, required=True)
+@click.option('--interactive', is_flag=True, help="Confirm each action interactively")
+@click.option('--abort-key', default='q', help="Key to abort all operations in interactive mode")
+@click.pass_context
+def replace(ctx, cql_expression, tag_pairs, interactive, abort_key):
+    """
+    Replace tags on pages matching CQL expression.
+    
+    CQL_EXPRESSION is a Confluence Query Language expression.
+    TAG_PAIRS are one or more old=new tag pairs.
+    
+    Example:
+        ctag replace "space = DOCS" old1=new1 old2=new2
+    """
+    confluence = ctx.obj['CONFLUENCE']
+    dry_run = ctx.obj['DRY_RUN']
+    
+    # Parse tag pairs
+    tag_mapping = {}
+    for pair in tag_pairs:
+        try:
+            old_tag, new_tag = pair.split('=', 1)  # Split on first equals sign
+            tag_mapping[old_tag.strip()] = new_tag.strip()
+        except ValueError:
+            raise click.BadParameter(f"Invalid tag pair format: {pair}. Use format 'oldtag=newtag'")
+    
+    # Initialize our processors
+    cql_processor = CQLProcessor(confluence)
+    tag_manager = TagManager(confluence)
+    
+    # Get matching pages
+    click.echo(f"Finding pages matching: {cql_expression}")
+    pages = cql_processor.get_all_results(cql_expression)
+    
+    if not pages:
+        click.echo("No pages found matching the CQL expression.")
+        return
+    
+    click.echo(f"Found {len(pages)} matching pages.")
+    
+    if dry_run:
+        click.echo("DRY RUN: No changes will be made.")
+        for page in pages:
+            title = sanitize_text(page.get('title', 'Unknown'))
+            space = page.get('space', {}).get('key', 'Unknown')
+            click.echo(f"Would replace tags {list(tag_mapping.keys())} with {list(tag_mapping.values())} on '{title}' (Space: {space})")
+        return
+    
+    # Set up interactive handler if needed
+    interactive_handler = None
+    if interactive:
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
+    
+    # Process the pages
+    results = tag_manager.process_pages(
+        pages=pages,
+        action='replace',
+        tag_mapping=tag_mapping,
+        interactive=interactive,
+        interactive_handler=interactive_handler
+    )
+    
+    # Display results
+    click.echo(f"\nResults:")
+    click.echo(f"  Total pages: {results['total']}")
+    click.echo(f"  Processed: {results['processed']}")
+    click.echo(f"  Skipped: {results['skipped']}")
+    click.echo(f"  Successful: {results['success']}")
+    click.echo(f"  Failed: {results['failed']}")
+
 
 def main():
     """Main entry point for the application."""

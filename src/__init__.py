@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 
 """
-atool - A command line program for Confluence page management.
+ctag - A command line tool for managing tags on Confluence pages in bulk.
 
-This package provides tools for synchronizing Confluence pages with a local
-file system.
+This package provides tools for managing Confluence page tags, including
+tag operations and CQL query processing.
 """
 
 __version__ = "0.1.0"
 
 # Import main components for easier access
-from src.engine import SyncEngine
-from src.fs import LocalStorage
-
+from src.tags import TagManager
+from src.cql import CQLProcessor
+from src.interactive import InteractiveHandler
 
 # Define public API
 __all__ = [
-    "SyncEngine",
-    "LocalStorage",
+    "TagManager",
+    "CQLProcessor",
+    "InteractiveHandler",
 ]
