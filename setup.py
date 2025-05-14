@@ -10,14 +10,14 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
     requirements = fh.read().splitlines()
 
 setup(
-    name="ctag",
+    name="atool",
     version="0.1.0",
-    author="ctag Team",
+    author="atool Team",
     author_email="olive.casazza@schrodinger.com",
     description="A command line program for Confluence page management",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ocasazza/ctag",
+    url="https://github.com/ocasazza/atool",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -35,7 +35,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "ctag=src.main:main",
+            "atool=src.main:main",
         ],
     },
 )

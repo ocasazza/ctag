@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ctag - A command line program for Confluence page management.
+atool - A command line program for Confluence page management.
 
 This package provides tools for synchronizing Confluence pages with a local
 file system.

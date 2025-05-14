@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ctag - A command line program for Confluence page management.
+atool - A command line program for Confluence page management.
 
 This module serves as the entry point for the application.
 """
@@ -48,7 +48,7 @@ def check_environment():
 @click.pass_context
 def cli(ctx, progress, recurse, dry_run):
     """
-    ctag - Synchronize Confluence pages with your local filesystem.
+    atool - Synchronize Confluence pages with your local filesystem.
 
     This tool allows you to:
     - Pull Confluence pages to your local filesystem
@@ -64,8 +64,8 @@ def cli(ctx, progress, recurse, dry_run):
     - ATLASSIAN_TOKEN: Your API token
 
     Example Usage:
-    $ ctag pull "https://<confluence-url>/wiki/spaces/SPACE/pages/123" ./docs
-    $ ctag push ./docs "https://<confluence-url>/wiki/spaces/SPACE/pages/123"
+    $ atool pull "https://<confluence-url>/wiki/spaces/SPACE/pages/123" ./docs
+    $ atool push ./docs "https://<confluence-url>/wiki/spaces/SPACE/pages/123"
     """
     # Load environment variables from .env file
     load_dotenv()
