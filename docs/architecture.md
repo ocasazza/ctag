@@ -30,6 +30,8 @@ Handles CQL queries to find matching pages:
 - Executing CQL queries against the Confluence API
 - Retrieving page information as `SearchResultItem` objects
 - Handling pagination for large result sets
+- Supporting different response formats (dictionary, object)
+- Robust error handling for API responses
 
 ### 4. Interactive Handler (`src/interactive.py`)
 
@@ -59,20 +61,37 @@ Handles reading commands from stdin and command line arguments:
 - Validating the input data structure
 - Converting input data to command objects
 
+### 8. Models (`src/models/`)
+
+Provides Pydantic models for data validation and type checking:
+- `SearchResultItem`: Represents a Confluence search result item
+- `CommandModel`: Represents a single command for tag operations
+- `CommandsFileModel`: Represents a file containing multiple commands
+- Schema-based model generation for consistent validation
+
+### 9. Utilities (`src/utils/`)
+
+Provides utility functions and helpers:
+- `pydantic_utils.py`: Functions for creating Pydantic models from JSON schemas
+- `text_utils.py`: Text processing utilities for sanitizing and formatting
+- Support for both Pydantic v1 and v2 compatibility
+
 ## Command Structure
 
 ```
-ctag
+ctag [--dry-run] [--progress BOOLEAN] [--recurse BOOLEAN]
 ├── add <cql_expression> <tags...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── remove <cql_expression> <tags...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── replace <cql_expression> <tag_pairs...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
-├── from_json <json_file> [--abort-key KEY]
-├── from_csv <csv_file> [--abort-key KEY]
-├── from_stdin_json [--abort-key KEY]
-├── from_stdin_csv [--abort-key KEY]
-├── from_json_string <json_data> [--abort-key KEY]
-└── from_csv_string <csv_data> [--abort-key KEY]
+├── from-json <json_file> [--abort-key KEY]
+├── from-csv <csv_file> [--abort-key KEY]
+└── from-stdin-json [--abort-key KEY]
 ```
+
+Global options:
+- `--dry-run`: Preview changes without making any modifications
+- `--progress`: Show progress bars during operations
+- `--recurse`: Process child pages recursively
 
 ## Data Flow
 
@@ -88,7 +107,7 @@ ctag
 
 ### JSON Command File Flow
 
-1. User enters the `from_json` command with a path to a JSON file
+1. User enters the `from-json` command with a path to a JSON file
 2. The CLI parses the command and options
 3. The JSON processor reads and validates the JSON file
 4. For each command in the JSON file:
@@ -102,7 +121,7 @@ ctag
 
 ### CSV Command File Flow
 
-1. User enters the `from_csv` command with a path to a CSV file
+1. User enters the `from-csv` command with a path to a CSV file
 2. The CLI parses the command and options
 3. The CSV processor validates the CSV file structure and reads the commands
 4. For each command in the CSV file:
@@ -116,7 +135,7 @@ ctag
 
 ### Stdin JSON Flow
 
-1. User pipes JSON data to the `from_stdin_json` command
+1. User pipes JSON data to the `from-stdin-json` command
 2. The CLI parses the command and options
 3. The stdin processor checks if stdin has data and reads the JSON data
 4. The JSON data is validated and parsed into command objects
@@ -129,48 +148,6 @@ ctag
    - Results for the command are displayed to the user
 6. Overall summary is displayed to the user
 
-### Stdin CSV Flow
-
-1. User pipes CSV data to the `from_stdin_csv` command
-2. The CLI parses the command and options
-3. The stdin processor checks if stdin has data and reads the CSV data
-4. The CSV data is validated and parsed into command objects
-5. For each command:
-   - The CQL processor executes the query to find matching pages
-   - If a CQL exclude expression is provided, matching pages are filtered out
-   - For each matching page:
-     - If interactive mode is enabled for the command, the user is prompted for confirmation
-     - The tag manager performs the requested operation on the page
-   - Results for the command are displayed to the user
-6. Overall summary is displayed to the user
-
-### Command Line JSON String Flow
-
-1. User enters the `from_json_string` command with a JSON string
-2. The CLI parses the command and options
-3. The JSON string is parsed and validated
-4. For each command in the JSON data:
-   - The CQL processor executes the query to find matching pages
-   - If a CQL exclude expression is provided, matching pages are filtered out
-   - For each matching page:
-     - If interactive mode is enabled for the command, the user is prompted for confirmation
-     - The tag manager performs the requested operation on the page
-   - Results for the command are displayed to the user
-5. Overall summary is displayed to the user
-
-### Command Line CSV String Flow
-
-1. User enters the `from_csv_string` command with a CSV string
-2. The CLI parses the command and options
-3. The CSV string is parsed and validated
-4. For each command in the CSV data:
-   - The CQL processor executes the query to find matching pages
-   - If a CQL exclude expression is provided, matching pages are filtered out
-   - For each matching page:
-     - If interactive mode is enabled for the command, the user is prompted for confirmation
-     - The tag manager performs the requested operation on the page
-   - Results for the command are displayed to the user
-5. Overall summary is displayed to the user
 
 ## Configuration
 
@@ -192,26 +169,22 @@ ctag remove "title ~ 'Project*'" tag1 tag2 --interactive
 ctag replace "lastmodified > -7d" old1=new1 old2=new2 --interactive
 
 # Execute commands from a JSON file
-ctag from_json examples/commands.json
+ctag from-json examples/commands.json
 
 # Execute commands from a JSON file with dry run mode
-ctag from_json examples/commands.json --dry-run
+ctag --dry-run from-json examples/commands.json
 
 # Execute commands from a CSV file
-ctag from_csv examples/commands.csv
+ctag from-csv examples/commands.csv
 
 # Execute commands from a CSV file with dry run mode
-ctag from_csv examples/commands.csv --dry-run
+ctag --dry-run from-csv examples/commands.csv
 
 # Pipe JSON data to the tool
-cat examples/commands.json | ctag from_stdin_json
+cat examples/commands.json | ctag from-stdin-json
 
-# Pipe CSV data to the tool
-cat examples/commands.csv | ctag from_stdin_csv
+# Show progress bars during operations
+ctag --progress true add "space = DOCS" tag1 tag2
 
-# Provide JSON data as a command line argument
-ctag from_json_string '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["tag1"]}]}'
-
-# Provide CSV data as a command line argument
-ctag from_csv_string 'action,cql_expression,tags
-add,space = DOCS,tag1,tag2'
+# Process child pages recursively
+ctag --recurse true add "space = DOCS" tag1 tag2
