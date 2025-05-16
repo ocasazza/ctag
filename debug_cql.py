@@ -38,13 +38,13 @@ print(f"Executing CQL query: {cql_expression}")
 try:
     results = confluence.cql(
         cql=cql_expression,
-        limit=10,
+        limit=1,
         expand=expand
     )
     
     # Print the raw results structure
     print("\nRaw results structure:")
-    print(json.dumps(results, indent=2)[:1000] + "..." if len(json.dumps(results, indent=2)) > 1000 else json.dumps(results, indent=2))
+    print(json.dumps(results))
     
     # Print details about each page
     pages = results.get('results', [])

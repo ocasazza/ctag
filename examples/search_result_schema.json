@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchResultItem",
+  "description": "Represents a single item in the Confluence search results",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": ["string", "null"],
+          "description": "The ID of the content"
+        },
+        "type": {
+          "type": ["string", "null"],
+          "description": "The type of content (e.g., 'page')"
+        },
+        "status": {
+          "type": ["string", "null"],
+          "description": "The status of the content (e.g., 'current')"
+        },
+        "title": {
+          "type": ["string", "null"],
+          "description": "The title of the content"
+        },
+        "childTypes": {
+          "type": ["object", "null"],
+          "description": "Child types information"
+        },
+        "macroRenderedOutput": {
+          "type": ["object", "null"],
+          "description": "Macro rendered output information"
+        },
+        "restrictions": {
+          "type": ["object", "null"],
+          "description": "Content restrictions information"
+        },
+        "_expandable": {
+          "type": ["object", "null"],
+          "properties": {
+            "container": {
+              "type": ["string", "null"]
+            },
+            "metadata": {
+              "type": ["string", "null"]
+            },
+            "extensions": {
+              "type": ["string", "null"]
+            },
+            "operations": {
+              "type": ["string", "null"]
+            },
+            "children": {
+              "type": ["string", "null"]
+            },
+            "history": {
+              "type": ["string", "null"]
+            },
+            "ancestors": {
+              "type": ["string", "null"]
+            },
+            "body": {
+              "type": ["string", "null"]
+            },
+            "version": {
+              "type": ["string", "null"]
+            },
+            "descendants": {
+              "type": ["string", "null"]
+            },
+            "space": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "_links": {
+          "type": ["object", "null"],
+          "properties": {
+            "webui": {
+              "type": ["string", "null"]
+            },
+            "self": {
+              "type": ["string", "null"]
+            },
+            "tinyui": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "title": {
+      "type": ["string", "null"],
+      "description": "The title of the search result"
+    },
+    "excerpt": {
+      "type": ["string", "null"],
+      "description": "An excerpt of the content"
+    },
+    "url": {
+      "type": ["string", "null"],
+      "description": "The URL of the content"
+    },
+    "resultGlobalContainer": {
+      "type": ["object", "null"],
+      "properties": {
+        "title": {
+          "type": ["string", "null"],
+          "description": "The title of the container (e.g., space name)"
+        },
+        "displayUrl": {
+          "type": ["string", "null"],
+          "description": "The display URL of the container"
+        }
+      }
+    },
+    "breadcrumbs": {
+      "type": "array",
+      "description": "Breadcrumb information for the content"
+    },
+    "entityType": {
+      "type": ["string", "null"],
+      "description": "The type of entity (e.g., 'content')"
+    },
+    "iconCssClass": {
+      "type": ["string", "null"],
+      "description": "CSS class for the icon"
+    },
+    "lastModified": {
+      "type": ["string", "null"],
+      "description": "When the content was last modified (ISO format)"
+    },
+    "friendlyLastModified": {
+      "type": ["string", "null"],
+      "description": "User-friendly description of when the content was last modified"
+    },
+    "score": {
+      "type": ["number", "null"],
+      "description": "The relevance score of the search result"
+    }
+  },
+  "example": {
+    "content": {
+      "id": "123456",
+      "type": "page",
+      "status": "current",
+      "title": "Example Page",
+      "_links": {
+        "webui": "/spaces/DOCS/pages/123456/Example+Page",
+        "self": "https://confluence.example.com/rest/api/content/123456"
+      }
+    },
+    "title": "Example Page",
+    "excerpt": "This is an example page with some content...",
+    "url": "/spaces/DOCS/pages/123456/Example+Page",
+    "resultGlobalContainer": {
+      "title": "Documentation Space",
+      "displayUrl": "/spaces/DOCS"
+    },
+    "entityType": "content",
+    "lastModified": "2025-05-12T15:56:21.000Z",
+    "friendlyLastModified": "yesterday at 8:56 AM",
+    "score": 0.85
+  }
+}

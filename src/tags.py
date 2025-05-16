@@ -11,6 +11,7 @@ on Confluence pages in bulk as part of the ctag CLI tool.
 import logging
 from typing import List, Dict, Set, Optional
 from src.utils import sanitize_text
+from src.cql import SearchResultItem
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class TagManager:
 
         return success
 
-    def process_pages(self, pages: List[dict], action: str, 
+    def process_pages(self, pages: List[SearchResultItem], action: str, 
                       tags: Optional[List[str]] = None, 
                       tag_mapping: Optional[Dict[str, str]] = None,
                       interactive: bool = False,
@@ -117,7 +118,7 @@ class TagManager:
         """Process tags on multiple pages.
 
         Args:
-            pages: List of page dictionaries from CQL query
+            pages: List of SearchResultItem objects from CQL query
             action: Action to perform ('add', 'remove', or 'replace')
             tags: List of tags for add/remove actions
             tag_mapping: Dictionary mapping old tags to new tags for replace action
@@ -136,13 +137,17 @@ class TagManager:
         }
 
         for page in pages:
-            # Try to get the page ID directly or from the content object
-            page_id = page.get('id')
-            if not page_id and 'content' in page:
-                page_id = page.get('content', {}).get('id')
+            # Get the page ID from the content object
+            page_id = None
+            if page.content and page.content.id:
+                page_id = page.content.id
                 
-            page_title = sanitize_text(page.get('title', 'Unknown'))
-            page_space = page.get('space', {}).get('key', 'Unknown')
+            page_title = sanitize_text(page.title if page.title else 'Unknown')
+            
+            # Get space information if available
+            page_space = 'Unknown'
+            if page.resultGlobalContainer and page.resultGlobalContainer.title:
+                page_space = page.resultGlobalContainer.title
             
             if not page_id:
                 logger.warning(f"Skipping page with no ID: {page_title}")

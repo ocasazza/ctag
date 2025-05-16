@@ -1,0 +1,3 @@
+action,cql_expression,tags,interactive,cql_exclude
+add,"space = ITLC AND title ~ ""Dell""","skb-hardware",false,
+add,"space = ITLC AND title ~ ""Macbook""","skb-hardware",false,
