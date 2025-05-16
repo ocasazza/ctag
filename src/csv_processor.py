@@ -13,7 +13,7 @@ import logging
 from typing import List, Dict, Optional, Any, Union
 import os
 import json
-from pydantic import BaseModel, create_model_from_schema
+from pydantic import BaseModel
 
 from src.json_processor import JSONCommand, CommandModel
 
@@ -83,8 +83,13 @@ def read_commands_from_csv(csv_file_path: str) -> List[JSONCommand]:
                         "cql_exclude": cql_exclude
                     }
                     
-                    # Validate using Pydantic model
-                    cmd_model = CommandModel.model_validate(cmd_data)
+                    # Validate using Pydantic model (handle both v1 and v2)
+                    if hasattr(CommandModel, 'model_validate'):
+                        cmd_model = CommandModel.model_validate(cmd_data)
+                    elif hasattr(CommandModel, 'parse_obj'):
+                        cmd_model = CommandModel.parse_obj(cmd_data)
+                    else:
+                        cmd_model = CommandModel(**cmd_data)
                     
                     # Create command object
                     command = JSONCommand(cmd_model)

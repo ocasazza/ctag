@@ -10,94 +10,11 @@ as part of the ctag CLI tool, with schema validation to enforce types.
 
 import json
 import logging
-import os
 from typing import List, Dict, Optional, Any, Union
-from pydantic import BaseModel, create_model_from_schema, Field
+
+from src.models import CommandModel, CommandsFileModel
 
 logger = logging.getLogger(__name__)
-
-# Load JSON schema for commands
-SCHEMA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples")
-COMMANDS_SCHEMA_PATH = os.path.join(SCHEMA_DIR, "schema.json")
-
-# Check if schema file exists, if not use a default schema
-if os.path.exists(COMMANDS_SCHEMA_PATH):
-    with open(COMMANDS_SCHEMA_PATH, 'r') as f:
-        commands_file_schema = json.load(f)
-else:
-    # Default schema if file doesn't exist
-    commands_file_schema = {
-        "type": "object",
-        "required": ["commands"],
-        "properties": {
-            "commands": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": ["action", "cql_expression", "tags"],
-                    "properties": {
-                        "action": {
-                            "type": "string",
-                            "enum": ["add", "remove", "replace"],
-                            "description": "The action to perform on tags"
-                        },
-                        "cql_expression": {
-                            "type": "string",
-                            "description": "The CQL query to select pages"
-                        },
-                        "tags": {
-                            "oneOf": [
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "description": "List of tags for add/remove actions"
-                                },
-                                {
-                                    "type": "object",
-                                    "additionalProperties": {
-                                        "type": "string"
-                                    },
-                                    "description": "Mapping of old tags to new tags for replace action"
-                                }
-                            ]
-                        },
-                        "interactive": {
-                            "type": "boolean",
-                            "default": False,
-                            "description": "Whether to confirm each action interactively"
-                        },
-                        "cql_exclude": {
-                            "type": ["string", "null"],
-                            "default": None,
-                            "description": "CQL expression to match pages that should be excluded"
-                        }
-                    },
-                    "additionalProperties": False
-                }
-            },
-            "description": {
-                "type": "string",
-                "description": "Optional description of the commands file"
-            }
-        },
-        "additionalProperties": False
-    }
-
-# Extract the command schema from the commands file schema
-command_schema = commands_file_schema["properties"]["commands"]["items"]
-
-# Create Pydantic models from JSON schema
-CommandModel = create_model_from_schema(
-    schema=command_schema,
-    model_name="CommandModel"
-)
-
-CommandsFileModel = create_model_from_schema(
-    schema=commands_file_schema,
-    model_name="CommandsFileModel"
-)
 
 class JSONCommand:
     """Represents a command read from a JSON file."""
@@ -110,8 +27,8 @@ class JSONCommand:
         """
         self.action = command_model.action.lower().strip()
         self.cql_expression = command_model.cql_expression.strip()
-        self.interactive = command_model.interactive if command_model.interactive is not None else False
-        self.cql_exclude = command_model.cql_exclude.strip() if command_model.cql_exclude else None
+        self.interactive = command_model.interactive if hasattr(command_model, 'interactive') and command_model.interactive is not None else False
+        self.cql_exclude = command_model.cql_exclude.strip() if hasattr(command_model, 'cql_exclude') and command_model.cql_exclude else None
         
         # Set tags or tag_mapping based on action
         if self.action in ('add', 'remove'):
@@ -179,8 +96,13 @@ def read_commands_from_json(json_file_path: str) -> List[JSONCommand]:
         with open(json_file_path, 'r') as jsonfile:
             data = json.load(jsonfile)
         
-        # Validate and parse using Pydantic model
-        commands_file = CommandsFileModel.model_validate(data)
+        # Validate and parse using Pydantic model (handle both v1 and v2)
+        if hasattr(CommandsFileModel, 'model_validate'):
+            commands_file = CommandsFileModel.model_validate(data)
+        elif hasattr(CommandsFileModel, 'parse_obj'):
+            commands_file = CommandsFileModel.parse_obj(data)
+        else:
+            commands_file = CommandsFileModel(**data)
         
         # Process commands
         for i, cmd_model in enumerate(commands_file.commands):
@@ -216,8 +138,13 @@ def validate_json_file(json_file_path: str) -> bool:
         with open(json_file_path, 'r') as jsonfile:
             data = json.load(jsonfile)
         
-        # Validate using Pydantic model
-        CommandsFileModel.model_validate(data)
+        # Validate using Pydantic model (handle both v1 and v2)
+        if hasattr(CommandsFileModel, 'model_validate'):
+            CommandsFileModel.model_validate(data)
+        elif hasattr(CommandsFileModel, 'parse_obj'):
+            CommandsFileModel.parse_obj(data)
+        else:
+            CommandsFileModel(**data)
         return True
         
     except Exception as e:

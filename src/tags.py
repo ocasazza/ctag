@@ -11,7 +11,7 @@ on Confluence pages in bulk as part of the ctag CLI tool.
 import logging
 from typing import List, Dict, Set, Optional
 from src.utils import sanitize_text
-from src.cql import SearchResultItem
+from src.models.search_results import SearchResultItem
 
 logger = logging.getLogger(__name__)
 
@@ -137,17 +137,23 @@ class TagManager:
         }
 
         for page in pages:
-            # Get the page ID from the content object
+            # Get the page ID from the content object or dictionary
             page_id = None
-            if page.content and page.content.id:
-                page_id = page.content.id
+            if page.content:
+                if isinstance(page.content, dict):
+                    page_id = page.content.get('id')
+                elif hasattr(page.content, 'id'):
+                    page_id = page.content.id
                 
             page_title = sanitize_text(page.title if page.title else 'Unknown')
             
             # Get space information if available
             page_space = 'Unknown'
-            if page.resultGlobalContainer and page.resultGlobalContainer.title:
-                page_space = page.resultGlobalContainer.title
+            if hasattr(page, 'resultGlobalContainer'):
+                if isinstance(page.resultGlobalContainer, dict):
+                    page_space = page.resultGlobalContainer.get('title', 'Unknown')
+                elif hasattr(page.resultGlobalContainer, 'title'):
+                    page_space = page.resultGlobalContainer.title
             
             if not page_id:
                 logger.warning(f"Skipping page with no ID: {page_title}")
@@ -192,3 +198,44 @@ class TagManager:
                 results['failed'] += 1
 
         return results
+
+
+def filter_excluded_pages(pages: List[SearchResultItem], excluded_pages: List[SearchResultItem]) -> List[SearchResultItem]:
+    """Filter out pages that are in the excluded_pages list based on page ID.
+    
+    Args:
+        pages: List of pages to filter
+        excluded_pages: List of pages to exclude
+        
+    Returns:
+        Filtered list of pages
+    """
+    # Get excluded IDs, handling both object and dictionary access
+    excluded_ids = []
+    for page in excluded_pages:
+        if page.content:
+            if isinstance(page.content, dict):
+                page_id = page.content.get('id')
+                if page_id:
+                    excluded_ids.append(page_id)
+            elif hasattr(page.content, 'id'):
+                if page.content.id:
+                    excluded_ids.append(page.content.id)
+    
+    # Filter pages, handling both object and dictionary access
+    filtered_pages = []
+    for page in pages:
+        include = True
+        if page.content:
+            if isinstance(page.content, dict):
+                page_id = page.content.get('id')
+                if page_id and page_id in excluded_ids:
+                    include = False
+            elif hasattr(page.content, 'id'):
+                if page.content.id and page.content.id in excluded_ids:
+                    include = False
+        
+        if include:
+            filtered_pages.append(page)
+    
+    return filtered_pages

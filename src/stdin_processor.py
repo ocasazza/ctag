@@ -30,8 +30,13 @@ def read_json_from_stdin() -> List[JSONCommand]:
         # Read from stdin
         data = json.load(sys.stdin)
         
-        # Validate and parse using Pydantic model
-        commands_file = CommandsFileModel.model_validate(data)
+        # Validate and parse using Pydantic model (handle both v1 and v2)
+        if hasattr(CommandsFileModel, 'model_validate'):
+            commands_file = CommandsFileModel.model_validate(data)
+        elif hasattr(CommandsFileModel, 'parse_obj'):
+            commands_file = CommandsFileModel.parse_obj(data)
+        else:
+            commands_file = CommandsFileModel(**data)
         
         # Process commands
         commands = []
@@ -110,8 +115,13 @@ def read_csv_from_stdin() -> List[JSONCommand]:
                     "cql_exclude": cql_exclude
                 }
                 
-                # Validate using Pydantic model
-                cmd_model = CommandModel.model_validate(cmd_data)
+                # Validate using Pydantic model (handle both v1 and v2)
+                if hasattr(CommandModel, 'model_validate'):
+                    cmd_model = CommandModel.model_validate(cmd_data)
+                elif hasattr(CommandModel, 'parse_obj'):
+                    cmd_model = CommandModel.parse_obj(cmd_data)
+                else:
+                    cmd_model = CommandModel(**cmd_data)
                 
                 # Create command object
                 command = JSONCommand(cmd_model)

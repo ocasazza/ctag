@@ -9,29 +9,12 @@ matching Confluence pages as part of the ctag CLI tool.
 """
 
 import logging
-import os
-from typing import List, Dict, Optional, Any, Union
 import json
-from pydantic import BaseModel, create_model_from_schema
+from typing import List, Dict, Optional, Any, Union
+
+from src.models.search_results import SearchResultItem
 
 logger = logging.getLogger(__name__)
-
-# Load JSON schema for SearchResultItem
-SCHEMA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples")
-SEARCH_RESULT_SCHEMA_PATH = os.path.join(SCHEMA_DIR, "search_result_schema.json")
-
-# Check if schema file exists, if not use a default schema
-if os.path.exists(SEARCH_RESULT_SCHEMA_PATH):
-    with open(SEARCH_RESULT_SCHEMA_PATH, 'r') as f:
-        search_result_schema = json.load(f)
-else:
-    raise Exception("search_result_schema.json file not found")
-
-# Create Pydantic models from JSON schema
-SearchResultItem = create_model_from_schema(
-    schema=search_result_schema,
-    model_name="SearchResultItem"
-)
 
 class CQLProcessor:
     """Processes CQL queries and retrieves matching Confluence pages."""
@@ -72,11 +55,62 @@ class CQLProcessor:
                 expand=expand
             )
             
-            # Parse the JSON array string into a Python list of dictionaries
+            # Add debug logging
+            logger.info(f"Results type: {type(results)}")
+            
+            # Handle different response formats
+            if isinstance(results, dict):
+                # Standard response format
+                results_list = results.get('results', [])
+                logger.info(f"Results keys: {results.keys()}")
+                logger.info(f"Results_list type: {type(results_list)}")
+            elif isinstance(results, list):
+                # Some API versions might return a list directly
+                results_list = results
+                logger.info("Results is already a list")
+            elif isinstance(results, str):
+                # Handle string response (possibly JSON)
+                try:
+                    parsed_results = json.loads(results)
+                    if isinstance(parsed_results, dict):
+                        results_list = parsed_results.get('results', [])
+                    else:
+                        results_list = parsed_results if isinstance(parsed_results, list) else []
+                    logger.info(f"Parsed results from string, got {len(results_list)} items")
+                except json.JSONDecodeError:
+                    logger.error("Failed to parse results string as JSON")
+                    results_list = []
+            else:
+                # Fallback for unexpected types
+                logger.error(f"Unexpected results type: {type(results)}")
+                results_list = []
+            
             # Convert each result item to a SearchResultItem object
-            pages: List[SearchResultItem] = [
-                SearchResultItem(item) for item in json.loads(results.get('results', []))
-            ]
+            pages: List[SearchResultItem] = []
+            for item in results_list:
+                try:
+                    # Try to use model_validate (Pydantic v2) or parse_obj (Pydantic v1)
+                    if hasattr(SearchResultItem, 'model_validate'):
+                        pages.append(SearchResultItem.model_validate(item))
+                    elif hasattr(SearchResultItem, 'parse_obj'):
+                        pages.append(SearchResultItem.parse_obj(item))
+                    else:
+                        # Fallback to direct instantiation
+                        pages.append(SearchResultItem(**item))
+                except Exception as e:
+                    logger.error(f"Error creating SearchResultItem: {str(e)}")
+                    # Try with a more lenient approach - create a dict with only the fields we need
+                    try:
+                        # Extract just the essential fields we need
+                        minimal_item = {
+                            'content': {'id': item.get('content', {}).get('id')},
+                            'title': item.get('title')
+                        }
+                        pages.append(SearchResultItem(**minimal_item))
+                        logger.info(f"Created SearchResultItem with minimal data for {minimal_item['title']}")
+                    except Exception as e2:
+                        logger.error(f"Failed to create even minimal SearchResultItem: {str(e2)}")
+                        logger.error(f"Item: {item}")
 
             logger.info(f"CQL query returned {len(pages)} results")
             
