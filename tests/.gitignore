@@ -1,0 +1,14 @@
+# Test-specific files to ignore
+
+# Pytest cache
+__pycache__/
+.pytest_cache/
+
+# Coverage reports
+.coverage
+htmlcov/
+coverage.xml
+
+# Temporary test files
+*.tmp
+temp_*

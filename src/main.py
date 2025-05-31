@@ -55,12 +55,10 @@ def check_environment():
 @click.version_option(version="0.1.0")
 @click.option("--progress", default=True, 
               help="Show progress bars during operations")
-@click.option("--recurse", default=True,
-              help="Process child pages recursively")
 @click.option("--dry-run", is_flag=True,
               help="Preview changes without making any modifications")
 @click.pass_context
-def cli(ctx, progress, recurse, dry_run):
+def cli(ctx, progress, dry_run):
     """
     ctag - Manage Confluence page tags in bulk.
 
@@ -99,7 +97,6 @@ def cli(ctx, progress, recurse, dry_run):
     
     ctx.obj.update({
         "PROGRESS": progress,
-        "RECURSE": recurse,
         "DRY_RUN": dry_run,
         "CONFLUENCE_URL": os.environ["CONFLUENCE_URL"],
         "CONFLUENCE_USERNAME": os.environ["CONFLUENCE_USERNAME"],

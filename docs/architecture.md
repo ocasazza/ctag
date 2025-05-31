@@ -79,7 +79,7 @@ Provides utility functions and helpers:
 ## Command Structure
 
 ```
-ctag [--dry-run] [--progress BOOLEAN] [--recurse BOOLEAN]
+ctag [--dry-run] [--progress BOOLEAN]
 ├── add <cql_expression> <tags...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── remove <cql_expression> <tags...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── replace <cql_expression> <tag_pairs...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
@@ -91,7 +91,6 @@ ctag [--dry-run] [--progress BOOLEAN] [--recurse BOOLEAN]
 Global options:
 - `--dry-run`: Preview changes without making any modifications
 - `--progress`: Show progress bars during operations
-- `--recurse`: Process child pages recursively
 
 ## Data Flow
 
@@ -185,6 +184,3 @@ cat examples/commands.json | ctag from-stdin-json
 
 # Show progress bars during operations
 ctag --progress true add "space = DOCS" tag1 tag2
-
-# Process child pages recursively
-ctag --recurse true add "space = DOCS" tag1 tag2
