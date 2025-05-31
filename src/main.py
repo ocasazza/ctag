@@ -42,7 +42,7 @@ def check_environment():
     for var, desc in REQUIRED_ENV_VARS.items():
         if not os.environ.get(var):
             missing.append(f"{var} - {desc}")
-    
+
     if missing:
         click.echo("Error: Missing required environment variables:", err=True)
         for var in missing:
@@ -53,7 +53,7 @@ def check_environment():
 
 @click.group()
 @click.version_option(version="0.1.0")
-@click.option("--progress", default=True, 
+@click.option("--progress", default=True,
               help="Show progress bars during operations")
 @click.option("--dry-run", is_flag=True,
               help="Preview changes without making any modifications")
@@ -80,13 +80,13 @@ def cli(ctx, progress, dry_run):
     """
     # Load environment variables from .env file
     load_dotenv()
-    
+
     # Check environment variables
     check_environment()
 
     # Initialize the context object with our options
     ctx.ensure_object(dict)
-    
+
     # Create Confluence client
     confluence = Confluence(
         url=os.environ["CONFLUENCE_URL"],
@@ -94,7 +94,7 @@ def cli(ctx, progress, dry_run):
         password=os.environ["ATLASSIAN_TOKEN"],
         cloud=True  # Set to False for server installations
     )
-    
+
     ctx.obj.update({
         "PROGRESS": progress,
         "DRY_RUN": dry_run,
