@@ -82,31 +82,30 @@
 
         # Development shell
         devShells.default = pkgs.mkShell {
-          buildInputs =
-            with pkgs;
-            [
-              python3
-              python3Packages.pip
-              python3Packages.setuptools
-              python3Packages.wheel
-              ctag # Include the built ctag package
-            ]
-            ++ runtimeDeps
-            ++ devDeps;
+          buildInputs = with pkgs; [
+            python3
+            python3Packages.pip
+            python3Packages.setuptools
+            python3Packages.wheel
+            python3Packages.virtualenv
+          ];
 
           shellHook = ''
-            echo "ctag development environment"
-            echo "Python version: $(python --version)"
-            echo "ctag is installed and ready to use!"
-            echo ""
-            echo "Try: ctag --help"
-            echo ""
+            # Create virtual environment if it doesn't exist
+            if [ ! -d .venv ]; then
+              python -m venv .venv
+            fi
+
+            # Activate virtual environment
+            source .venv/bin/activate
+
+            # Install dependencies if not already installed
+            pip install -e .
+            pip install -r requirements-dev.txt
 
             # Create .env file if it doesn't exist
             if [ ! -f .env ]; then
-              echo "Creating .env file from .env.example..."
               cp .env.example .env
-              echo "Please edit .env with your Confluence credentials"
             fi
           '';
         };

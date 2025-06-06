@@ -60,7 +60,7 @@ def check_environment():
 @click.pass_context
 def cli(ctx, progress, dry_run):
     """
-    ctag - Manage Confluence page tags in bulk.
+    ctag - Manage Confluence page tags in bulk with a CLI.
 
     This tool allows you to:
     - Add, remove, or replace tags on Confluence pages in bulk

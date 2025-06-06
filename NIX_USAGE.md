@@ -9,17 +9,23 @@ This document explains how to use the Nix flake for the ctag project.
 
 ## Quick Start
 
-### Development Environment with ctag installed
+### Development Environment with local .venv
 
 ```bash
 # Clone the repository
 git clone https://github.com/ocasazza/ctag.git
 cd ctag
 
-# Enter the development shell (ctag will be installed and available)
+# Enter the development shell (creates .venv with all packages)
 nix develop
 
-# ctag is now available in your shell
+# This will:
+# - Create a local .venv directory
+# - Install ctag and all dependencies in the .venv
+# - Activate the virtual environment
+# - Make ctag available in your shell
+
+# ctag is now available
 ctag --help
 ctag add "space = DOCS" tag1 tag2 --dry-run
 ```
@@ -32,7 +38,9 @@ ctag add "space = DOCS" tag1 tag2 --dry-run
 direnv allow
 
 # The environment will be automatically activated when you cd into the directory
-# ctag will be available immediately
+# - Creates .venv on first run
+# - Activates the virtual environment
+# - ctag will be available immediately
 ctag --help
 ```
 
