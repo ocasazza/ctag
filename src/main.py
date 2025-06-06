@@ -114,7 +114,8 @@ cli.add_command(from_stdin_json)
 
 def main():
     """Entry point for the ctag CLI tool."""
-    cli(obj={})
+    ctx = click.Context(cli)
+    cli(ctx=ctx, progress=True, recurse=True, dry_run=False)
 
 
 if __name__ == "__main__":
