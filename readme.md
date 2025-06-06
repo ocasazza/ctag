@@ -14,12 +14,59 @@ A command line tool for managing tags on Confluence pages in bulk. This tool all
 
 ## Installation
 
-### From Source
+### Using Nix Flakes (Recommended)
+
+If you have Nix with flakes enabled:
+
+```sh
+# Clone the repository
+git clone https://github.com/ocasazza/ctag.git
+cd ctag
+
+# Enter development shell
+nix develop
+
+# Or run directly without installing
+nix run . -- --help
+```
+
+For automatic environment setup with direnv:
+
+```sh
+# Install direnv if not already installed
+# Then allow the .envrc file
+direnv allow
+```
+
+### From Source (Traditional)
 
 ```sh
 git clone https://github.com/ocasazza/ctag.git
 cd ctag
 pip install -e .
+```
+
+### Nix Flake Features
+
+The Nix flake provides:
+
+- **Development Shell**: Complete development environment with all dependencies
+- **Package Build**: Build the ctag package with `nix build`
+- **Direct Execution**: Run ctag without installation using `nix run`
+- **Reproducible Environment**: Consistent development environment across machines
+
+Development shell includes:
+- Python 3 with all runtime dependencies
+- Development tools (pytest, flake8, black, isort, mypy)
+- Automatic PYTHONPATH setup
+- Auto-creation of .env file from template
+
+Available nix commands:
+```sh
+nix develop          # Enter development shell
+nix build            # Build the package
+nix run . -- --help  # Run ctag directly
+nix flake check      # Validate the flake
 ```
 
 ## Configuration
