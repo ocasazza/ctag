@@ -26,14 +26,14 @@ jobs:
     - name: Setup development environment
       run: nix develop --command bash -c "echo 'Environment setup complete'"
 
-    - name: Run tests
-      run: nix develop --command python -m pytest
+    - name: Check ctag installation
+      run: nix develop --command ctag --help
 
     - name: Run linting
       run: nix develop --command python -m flake8 src/
 
-    - name: Check ctag installation
-      run: nix develop --command ctag --help
+    - name: Run tests
+      run: nix develop --command python -m pytest
 
     - name: Test ctag build
       run: nix build
