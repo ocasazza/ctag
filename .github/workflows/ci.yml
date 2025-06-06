@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, test, dev ]
+  pull_request:
+    branches: [ main, test, dev ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Setup Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Check flake
+      run: nix flake check
+
+    - name: Setup development environment
+      run: nix develop --command bash -c "echo 'Environment setup complete'"
+
+    - name: Run tests
+      run: nix develop --command python -m pytest
+
+    - name: Run linting
+      run: nix develop --command python -m flake8 src/
+
+    - name: Check ctag installation
+      run: nix develop --command ctag --help
+
+    - name: Test ctag build
+      run: nix build
