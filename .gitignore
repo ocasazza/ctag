@@ -44,6 +44,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.direnv
 
 # IDE files
 .idea/
@@ -55,3 +56,4 @@ venv.bak/
 confluence_pages/
 test_storage/
 data/
+result
