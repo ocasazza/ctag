@@ -59,6 +59,13 @@
           nativeBuildInputs = with pythonPackages; [
             setuptools
             wheel
+            build
+            pip
+          ];
+
+          build-system = with pythonPackages; [
+            setuptools
+            wheel
           ];
 
           propagatedBuildInputs = runtimeDeps;
