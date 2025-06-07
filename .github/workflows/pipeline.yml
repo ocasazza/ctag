@@ -1,0 +1,107 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, test, dev ]
+  pull_request:
+    branches: [ main, test, dev ]
+
+jobs:
+  setup-env:
+    name: Setup Environment
+    runs-on: ubuntu-latest
+    outputs:
+      env-ready: ${{ steps.verify.outputs.ready }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Setup Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Check flake
+      run: nix flake check
+
+    - name: Setup development environment
+      run: |
+        echo "Setting up ctag development environment with Nix flake..."
+        nix develop --command bash -c "
+          echo 'Python version:' \$(python --version)
+          echo 'ctag location:' \$(which ctag)
+          echo 'Virtual environment:' \$(echo \$VIRTUAL_ENV)
+          ctag --version
+        "
+
+    - name: Verify environment
+      id: verify
+      run: |
+        nix develop --command bash -c "
+          python -c 'import src.main; print(\"✓ ctag module imports successfully\")'
+          ctag --help > /dev/null && echo '✓ ctag CLI works'
+          python -m pytest --version > /dev/null && echo '✓ pytest available'
+          echo 'Environment verification complete!'
+        "
+        echo "ready=true" >> $GITHUB_OUTPUT
+
+  lint:
+    name: Run Linting
+    runs-on: ubuntu-latest
+    needs: setup-env
+    if: needs.setup-env.outputs.env-ready == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Setup Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Run linting
+      run: nix develop --command python -m flake8 src/
+
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    needs: [setup-env, lint]
+    if: needs.setup-env.outputs.env-ready == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Setup Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Build ctag package
+      run: nix build
+
+    - name: Test built package
+      run: nix develop --command ctag --help
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+
+    - name: Setup Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: Run tests
+      run: nix develop --command python -m pytest
