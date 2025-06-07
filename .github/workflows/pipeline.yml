@@ -5,15 +5,34 @@ on:
     branches: [ main, test, dev ]
   pull_request:
     branches: [ main, test, dev ]
+  workflow_dispatch:
 
 jobs:
   e2e:
     name: E2E
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    env:
+      ATLASSIAN_URL: ${{ secrets.ATLASSIAN_URL }}
+      ATLASSIAN_USERNAME: ${{ secrets.ATLASSIAN_USERNAME }}
+      ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set up environment variables
+      run: |
+        echo "Branch: ${{ github.ref_name }}"
+        echo "Using GitHub environment: ${{ github.ref_name }}"
+        if [ -n "$ATLASSIAN_URL" ] && [ -n "$ATLASSIAN_USERNAME" ] && [ -n "$ATLASSIAN_TOKEN" ]; then
+          echo "✓ Environment secrets found and will be used"
+          echo "URL: ${ATLASSIAN_URL}"
+          echo "Username: ${ATLASSIAN_USERNAME}"
+        else
+          echo "⚠️  Environment secrets not found, tests will use dummy values"
+          echo "Expected secrets in '${{ github.ref_name }}' environment: ATLASSIAN_URL, ATLASSIAN_USERNAME, ATLASSIAN_TOKEN"
+        fi
 
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@main
