@@ -41,6 +41,9 @@
           mypy
         ];
 
+        # Python environment with all packages
+        pythonEnv = pkgs.python3.withPackages (ps: runtimeDeps ++ devDeps);
+
         # The ctag package
         ctag = pythonPackages.buildPythonPackage rec {
           pname = "ctag";
@@ -59,12 +62,6 @@
           # Skip tests during build (they require Confluence credentials)
           doCheck = false;
 
-          # Ensure JSON schema files are included in the package
-          postInstall = ''
-            # Copy JSON schema files to the installed package
-            cp -r $src/src/models/*.json $out/lib/python*/site-packages/src/models/
-          '';
-
           meta = with pkgs.lib; {
             description = "A command line tool for managing tags on Confluence pages in bulk";
             homepage = "https://github.com/ocasazza/ctag";
@@ -73,7 +70,6 @@
             platforms = platforms.unix;
           };
         };
-
       in
       {
         # Default package
@@ -82,31 +78,23 @@
 
         # Development shell
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            python3
-            python3Packages.pip
-            python3Packages.setuptools
-            python3Packages.wheel
-            python3Packages.virtualenv
+          buildInputs = [
+            pythonEnv
+            pkgs.python3Packages.pip  # Keep pip available for edge cases
           ];
 
           shellHook = ''
-            # Create virtual environment if it doesn't exist
-            if [ ! -d .venv ]; then
-              python -m venv .venv
-            fi
-
-            # Activate virtual environment
-            source .venv/bin/activate
-
-            # Install dependencies if not already installed
-            pip install -e .
-            pip install -r requirements-dev.txt
+            # Set up Python path to include source directory
+            export PYTHONPATH="${./.}/src:$PYTHONPATH"
 
             # Create .env file if it doesn't exist
             if [ ! -f .env ]; then
               cp .env.example .env
+              echo "Created .env file from .env.example - please configure your Confluence credentials"
             fi
+
+            # Install the local package in development mode (editable install)
+            pip install -e .
           '';
         };
 

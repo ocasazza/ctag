@@ -9,21 +9,22 @@ This document explains how to use the Nix flake for the ctag project.
 
 ## Quick Start
 
-### Development Environment with local .venv
+### Development Environment with Pure Nix
 
 ```bash
 # Clone the repository
 git clone https://github.com/ocasazza/ctag.git
 cd ctag
 
-# Enter the development shell (creates .venv with all packages)
+# Enter the development shell (loads all packages via Nix)
 nix develop
 
 # This will:
-# - Create a local .venv directory
-# - Install ctag and all dependencies in the .venv
-# - Activate the virtual environment
+# - Load all Python dependencies directly from Nix
+# - Set up PYTHONPATH to include the src/ directory
+# - Install ctag in development mode
 # - Make ctag available in your shell
+# - No virtual environment needed!
 
 # ctag is now available
 ctag --help
@@ -38,8 +39,8 @@ ctag add "space = DOCS" tag1 tag2 --dry-run
 direnv allow
 
 # The environment will be automatically activated when you cd into the directory
-# - Creates .venv on first run
-# - Activates the virtual environment
+# - Loads all Python packages via Nix
+# - Sets up PYTHONPATH automatically
 # - ctag will be available immediately
 ctag --help
 ```
