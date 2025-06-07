@@ -93,7 +93,11 @@ def cleanup_tags(confluence_client):
             print(f"Failed to clean up tag {tag} on page {page_id}: {str(e)}")
 
 
-def run_ctag_command(command):
+def run_ctag_command(command, env=None):
     """Run a ctag command and return the output."""
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if env is None:
+        env = os.environ.copy()
+    result = subprocess.run(
+        command, shell=True, capture_output=True, text=True, env=env
+    )
     return result.stdout, result.stderr, result.returncode

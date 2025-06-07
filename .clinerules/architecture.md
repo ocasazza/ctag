@@ -17,7 +17,6 @@ ctag [GLOBAL_OPTIONS] COMMAND [COMMAND_OPTIONS] [ARGUMENTS]
 ### Global Options (Available for all commands)
 - `--version` - Show version and exit
 - `--progress BOOLEAN` - Show progress bars during operations (default: True)
-- `--recurse BOOLEAN` - Process child pages recursively (default: True)
 - `--dry-run` - Preview changes without making any modifications
 
 ### Commands
@@ -160,7 +159,7 @@ ctag from-stdin-json [OPTIONS]
 ### Configuration
 - Environment-based configuration using `.env` file
 - Required variables: `ATLASSIAN_URL`, `ATLASSIAN_USERNAME`, `ATLASSIAN_TOKEN`
-- Global CLI options: `--dry-run`, `--progress`, `--recurse`
+- Global CLI options: `--dry-run`, `--progress`
 
 ### Command Pattern
 Each command follows this structure:

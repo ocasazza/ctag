@@ -32,13 +32,8 @@ from src.utils import sanitize_text
     required=False,
     help="CQL expression to match pages that should be excluded from this operation",
 )
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Preview changes without making any modifications",
-)
 @click.pass_context
-def add(ctx, cql_expression, tags, interactive, abort_key, cql_exclude, dry_run):
+def add(ctx, cql_expression, tags, interactive, abort_key, cql_exclude):
     """
     Add tags to pages matching CQL expression.
 

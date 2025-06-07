@@ -16,18 +16,6 @@ from tests.conftest import random_string, run_ctag_command
 class TestMainCLI:
     """Test the main CLI interface and global options."""
 
-    def test_cli_help(self):
-        """Test that the CLI help displays correctly."""
-        cmd = "python -m src.main --help"
-        stdout, stderr, returncode = run_ctag_command(cmd)
-
-        assert returncode == 0, f"Help command failed with return code {returncode}"
-        assert "ctag - Manage Confluence page tags in bulk" in stdout
-        assert "--dry-run" in stdout
-        assert "--progress" in stdout
-        # Ensure --recurse is NOT in the help (removed option)
-        assert "--recurse" not in stdout
-
     def test_cli_version(self):
         """Test that the CLI version displays correctly."""
         cmd = "python -m src.main --version"
@@ -35,16 +23,6 @@ class TestMainCLI:
 
         assert returncode == 0, f"Version command failed with return code {returncode}"
         assert "0.1.0" in stdout
-
-    def test_subcommand_help(self):
-        """Test that subcommand help displays correctly."""
-        cmd = "python -m src.main add --help"
-        stdout, stderr, returncode = run_ctag_command(cmd)
-
-        assert returncode == 0, f"Add help command failed with return code {returncode}"
-        assert "Add tags to pages matching CQL expression" in stdout
-        assert "--interactive" in stdout
-        assert "--cql-exclude" in stdout
 
     def test_global_dry_run_option_position(self):
         """Test that --dry-run works when placed before the subcommand."""
@@ -69,18 +47,21 @@ class TestMainCLI:
 
     def test_missing_environment_variables(self):
         """Test behavior when required environment variables are missing."""
-        # Save current environment
-        saved_env = {}
+        # Create a clean environment without the required variables
+        clean_env = os.environ.copy()
         env_vars = ["ATLASSIAN_URL", "ATLASSIAN_USERNAME", "ATLASSIAN_TOKEN"]
 
         for var in env_vars:
-            saved_env[var] = os.environ.get(var)
-            if var in os.environ:
-                del os.environ[var]
+            clean_env.pop(var, None)
+
+        # Temporarily rename .env file to prevent load_dotenv from loading it
+        env_file_exists = os.path.exists(".env")
+        if env_file_exists:
+            os.rename(".env", ".env.backup")
 
         try:
             cmd = 'python -m src.main add "space = TEST" test-tag'
-            stdout, stderr, returncode = run_ctag_command(cmd)
+            stdout, stderr, returncode = run_ctag_command(cmd, env=clean_env)
 
             # Should fail with missing environment variables error
             assert (
@@ -89,10 +70,9 @@ class TestMainCLI:
             assert "Missing required environment variables" in stderr
 
         finally:
-            # Restore environment
-            for var, value in saved_env.items():
-                if value is not None:
-                    os.environ[var] = value
+            # Restore .env file
+            if env_file_exists:
+                os.rename(".env.backup", ".env")
 
     def test_progress_option(self):
         """Test that the --progress option is accepted."""

@@ -52,7 +52,7 @@ def check_environment():
             "\nCreate a .env file with these variables or set them in your environment.",
             err=True,
         )
-        sys.exit(1)
+        raise click.ClickException("Missing required environment variables")
 
 
 @click.group()
@@ -85,7 +85,7 @@ def cli(ctx, progress, dry_run):
     $ ctag replace "lastmodified > -7d" old1=new1 old2=new2
     """
     # Load environment variables from .env file
-    load_dotenv()
+    load_dotenv(dotenv_path=".env")
 
     # Check environment variables
     check_environment()
@@ -124,7 +124,7 @@ cli.add_command(get)
 
 def main():
     """Entry point for the ctag CLI tool."""
-    cli({})
+    cli()
 
 
 if __name__ == "__main__":
