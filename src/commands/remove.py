@@ -23,7 +23,9 @@ from src.utils import sanitize_text
 @click.argument("tags", nargs=-1, required=True)
 @click.option("--interactive", is_flag=True, help="Confirm each action interactively")
 @click.option(
-    "--abort-key", default="q", help="Key to abort all operations in interactive mode"
+    "--abort-key",
+    default="q",
+    help="Key to abort all operations in interactive mode",
 )
 @click.option(
     "--cql-exclude",
@@ -76,29 +78,27 @@ def remove(ctx, cql_expression, tags, interactive, abort_key, cql_exclude):
         click.echo("DRY RUN: No changes will be made.")
         for page in pages:
             title = sanitize_text(page.title if page.title else "Unknown")
-            # Handle both object and dictionary access for resultGlobalContainer
+            # Handle both object and dictionary access for
+            # resultGlobalContainer
             if hasattr(page, "resultGlobalContainer"):
                 if isinstance(page.resultGlobalContainer, dict):
                     space = page.resultGlobalContainer.get("title", "Unknown")
                 else:
                     space = (
-                        page.resultGlobalContainer.title
-                        if hasattr(page.resultGlobalContainer, "title")
-                        else "Unknown"
+                        page.resultGlobalContainer.title if hasattr(page.resultGlobalContainer, "title") else "Unknown"
                     )
             else:
                 space = "Unknown"
             click.echo(
-                f"Would remove tags {list(tags)} from '{title}' (Space: {space})"
+                f"Would remove tags {
+        list(tags)} from '{title}' (Space: {space})"
             )
         return
 
     # Set up interactive handler if needed
     interactive_handler = None
     if interactive:
-        interactive_handler = InteractiveHandler(
-            default_response=True, abort_value=abort_key
-        )
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
 
     # Process the pages
     results = tag_manager.process_pages(
@@ -130,11 +130,5 @@ def filter_excluded_pages(
     Returns:
         Filtered list of pages
     """
-    excluded_ids = [
-        page.content.id for page in excluded_pages if page.content and page.content.id
-    ]
-    return [
-        page
-        for page in pages
-        if not (page.content and page.content.id and page.content.id in excluded_ids)
-    ]
+    excluded_ids = [page.content.id for page in excluded_pages if page.content and page.content.id]
+    return [page for page in pages if not (page.content and page.content.id and page.content.id in excluded_ids)]

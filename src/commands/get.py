@@ -34,12 +34,12 @@ from src.utils import sanitize_text
     default=True,
     help="Include page titles and spaces in output",
 )
-@click.option(
-    "--tags-only", is_flag=True, help="Show only unique tags across all pages"
-)
+@click.option("--tags-only", is_flag=True, help="Show only unique tags across all pages")
 @click.option("--interactive", is_flag=True, help="Browse results interactively")
 @click.option(
-    "--abort-key", default="q", help="Key to abort all operations in interactive mode"
+    "--abort-key",
+    default="q",
+    help="Key to abort all operations in interactive mode",
 )
 @click.option(
     "--cql-exclude",
@@ -143,9 +143,7 @@ def get(
 
     # Handle interactive mode
     if interactive:
-        interactive_handler = InteractiveHandler(
-            default_response=True, abort_value=abort_key
-        )
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
         page_data = handle_interactive_browsing(page_data, interactive_handler)
 
     # Generate output based on format and options
@@ -209,9 +207,7 @@ def filter_excluded_pages(
     return filtered_pages
 
 
-def handle_interactive_browsing(
-    page_data: List[Dict], interactive_handler
-) -> List[Dict]:
+def handle_interactive_browsing(page_data: List[Dict], interactive_handler) -> List[Dict]:
     """Handle interactive browsing of page results.
 
     Args:
@@ -260,9 +256,7 @@ def format_tags_only_output(tags: Set[str], output_format: str) -> str:
         return "\n".join(output_lines)
 
 
-def format_page_data_output(
-    page_data: List[Dict], output_format: str, show_pages: bool
-) -> str:
+def format_page_data_output(page_data: List[Dict], output_format: str, show_pages: bool) -> str:
     """Format output showing page data with tags.
 
     Args:

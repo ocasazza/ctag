@@ -115,9 +115,7 @@ def test_from_json_replace(confluence_client, test_page, cleanup_tags):
         labels = confluence_client.get_page_labels(page_id)
         label_names = [label["name"] for label in labels.get("results", [])]
 
-        assert (
-            old_tag not in label_names
-        ), f"Old tag {old_tag} was not removed from the page"
+        assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
         assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
         assert returncode == 0, f"Command failed with return code {returncode}"
     finally:
@@ -184,12 +182,8 @@ def test_from_json_multiple_commands(confluence_client, test_page, cleanup_tags)
         label_names = [label["name"] for label in labels.get("results", [])]
 
         assert add_tag in label_names, f"Add tag {add_tag} was not added to the page"
-        assert (
-            remove_tag not in label_names
-        ), f"Remove tag {remove_tag} was not removed from the page"
-        assert (
-            old_tag not in label_names
-        ), f"Old tag {old_tag} was not removed from the page"
+        assert remove_tag not in label_names, f"Remove tag {remove_tag} was not removed from the page"
+        assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
         assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
         assert returncode == 0, f"Command failed with return code {returncode}"
     finally:

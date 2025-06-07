@@ -24,7 +24,8 @@ from src.commands.replace import replace
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,9 @@ def check_environment():
 @click.version_option(version="0.1.0")
 @click.option("--progress", default=True, help="Show progress bars during operations")
 @click.option(
-    "--dry-run", is_flag=True, help="Preview changes without making any modifications"
+    "--dry-run",
+    is_flag=True,
+    help="Preview changes without making any modifications",
 )
 @click.pass_context
 def cli(ctx, progress, dry_run):

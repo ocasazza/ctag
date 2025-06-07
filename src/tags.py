@@ -60,7 +60,10 @@ class TagManager:
                 self.confluence.set_page_label(page_id, tag)
                 logger.info(f"Added tag '{tag}' to page {page_id}")
             except Exception as e:
-                logger.error(f"Error adding tag '{tag}' to page {page_id}: {str(e)}")
+                logger.error(
+                    f"Error adding tag '{tag}' to page {page_id}: {
+        str(e)}"
+                )
                 success = False
         return success
 
@@ -80,9 +83,7 @@ class TagManager:
                 self.confluence.remove_page_label(page_id, tag)
                 logger.info(f"Removed tag '{tag}' from page {page_id}")
             except Exception as e:
-                logger.error(
-                    f"Error removing tag '{tag}' from page {page_id}: {str(e)}"
-                )
+                logger.error(f"Error removing tag '{tag}' from page {page_id}: {str(e)}")
                 success = False
         return success
 
@@ -106,9 +107,7 @@ class TagManager:
                     self.confluence.remove_page_label(page_id, old_tag)
                     # Add the new tag
                     self.confluence.set_page_label(page_id, new_tag)
-                    logger.info(
-                        f"Replaced tag '{old_tag}' with '{new_tag}' on page {page_id}"
-                    )
+                    logger.info(f"Replaced tag '{old_tag}' with '{new_tag}' on page {page_id}")
                 except Exception as e:
                     logger.error(
                         f"Error replacing tag '{old_tag}' with '{new_tag}' on page {page_id}: {
@@ -190,9 +189,7 @@ class TagManager:
             if interactive and interactive_handler:
                 page_info = f"'{page_title}' (Space: {page_space}, ID: {page_id})"
                 if not interactive_handler.confirm_action(page_info, action_desc):
-                    logger.info(
-                        f"Skipped {action} tags on page {page_id} ({page_title})"
-                    )
+                    logger.info(f"Skipped {action} tags on page {page_id} ({page_title})")
                     results["skipped"] += 1
                     continue
 
@@ -207,7 +204,8 @@ class TagManager:
                     success = self.replace_tags(page_id, tag_mapping)
             except Exception as e:
                 logger.error(
-                    f"Error processing tags on page {page_id} ({page_title}): {str(e)}"
+                    f"Error processing tags on page {page_id} ({page_title}): {
+        str(e)}"
                 )
                 success = False
 

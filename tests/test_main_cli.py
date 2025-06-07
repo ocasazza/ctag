@@ -83,9 +83,7 @@ class TestMainCLI:
             stdout, stderr, returncode = run_ctag_command(cmd)
 
             # Should fail with missing environment variables error
-            assert (
-                returncode != 0
-            ), "Command should fail with missing environment variables"
+            assert returncode != 0, "Command should fail with missing environment variables"
             assert "Missing required environment variables" in stderr
 
         finally:
@@ -99,18 +97,14 @@ class TestMainCLI:
         cmd = 'python -m src.main --progress false --dry-run add "contentId = 999999" test-tag'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
-        assert (
-            returncode == 0
-        ), f"Progress option command failed with return code {returncode}"
+        assert returncode == 0, f"Progress option command failed with return code {returncode}"
 
     def test_multiple_global_options(self):
         """Test using multiple global options together."""
         cmd = 'python -m src.main --dry-run --progress true add "contentId = 999999" test-tag'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
-        assert (
-            returncode == 0
-        ), f"Multiple global options command failed with return code {returncode}"
+        assert returncode == 0, f"Multiple global options command failed with return code {returncode}"
         assert "DRY RUN" in stdout or "No pages found" in stdout
 
 
@@ -154,9 +148,7 @@ class TestCLIIntegration:
 
         # Verify the tag doesn't exist initially
         labels_before = confluence_client.get_page_labels(page_id)
-        label_names_before = [
-            label["name"] for label in labels_before.get("results", [])
-        ]
+        label_names_before = [label["name"] for label in labels_before.get("results", [])]
         assert tag not in label_names_before
 
         # Run with dry-run
@@ -172,9 +164,7 @@ class TestCLIIntegration:
         label_names_after = [label["name"] for label in labels_after.get("results", [])]
         assert tag not in label_names_after
 
-    def test_progress_option_with_real_command(
-        self, confluence_client, test_page, cleanup_tags
-    ):
+    def test_progress_option_with_real_command(self, confluence_client, test_page, cleanup_tags):
         """Test progress option with a real command."""
         page_id, title, space_key = test_page
         tag = f"test-tag-{random_string()}"

@@ -60,9 +60,7 @@ class TestDryRunFunctionality:
         # Verify tag is still present (not actually removed)
         labels = confluence_client.get_page_labels(page_id)
         label_names = [label["name"] for label in labels.get("results", [])]
-        assert (
-            tag in label_names
-        ), f"Tag {tag} should still be present after dry-run remove"
+        assert tag in label_names, f"Tag {tag} should still be present after dry-run remove"
 
     def test_replace_dry_run(self, confluence_client, test_page, cleanup_tags):
         """Test dry-run mode for replace command."""
@@ -90,12 +88,8 @@ class TestDryRunFunctionality:
         # Verify no actual changes were made
         labels = confluence_client.get_page_labels(page_id)
         label_names = [label["name"] for label in labels.get("results", [])]
-        assert (
-            old_tag in label_names
-        ), f"Old tag {old_tag} should still be present after dry-run replace"
-        assert (
-            new_tag not in label_names
-        ), f"New tag {new_tag} should not be present after dry-run replace"
+        assert old_tag in label_names, f"Old tag {old_tag} should still be present after dry-run replace"
+        assert new_tag not in label_names, f"New tag {new_tag} should not be present after dry-run replace"
 
     def test_dry_run_with_multiple_tags(self, confluence_client, test_page):
         """Test dry-run mode with multiple tags."""
@@ -140,17 +134,15 @@ class TestDryRunFunctionality:
         cleanup_tags.append((page_id, exclude_tag))
 
         # Run with dry-run and exclude
-        cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
+        cmd = (
+            f'python -m src.main --dry-run add "contentId = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
+        )
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Should succeed but exclude the page
         assert_command_success(returncode, stderr, "dry-run with exclude")
         # Should show that pages were excluded
-        assert (
-            "Excluded" in stdout
-            or "No pages found" in stdout
-            or "0 pages remaining" in stdout
-        )
+        assert "Excluded" in stdout or "No pages found" in stdout or "0 pages remaining" in stdout
 
     def test_dry_run_combined_with_progress(self, confluence_client, test_page):
         """Test dry-run mode combined with progress option."""
@@ -176,9 +168,7 @@ class TestDryRunFunctionality:
 class TestDryRunIntegration:
     """Integration tests for dry-run functionality."""
 
-    def test_dry_run_preserves_existing_tags(
-        self, confluence_client, test_page, cleanup_tags
-    ):
+    def test_dry_run_preserves_existing_tags(self, confluence_client, test_page, cleanup_tags):
         """Test that dry-run doesn't affect existing tags."""
         page_id, title, space_key = test_page
         existing_tag = f"existing-{random_string()}"
@@ -190,9 +180,7 @@ class TestDryRunIntegration:
 
         # Get initial state
         labels_before = confluence_client.get_page_labels(page_id)
-        label_names_before = [
-            label["name"] for label in labels_before.get("results", [])
-        ]
+        label_names_before = [label["name"] for label in labels_before.get("results", [])]
 
         # Run dry-run add
         cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {new_tag}'
@@ -204,13 +192,9 @@ class TestDryRunIntegration:
         labels_after = confluence_client.get_page_labels(page_id)
         label_names_after = [label["name"] for label in labels_after.get("results", [])]
 
-        assert (
-            label_names_before == label_names_after
-        ), "Existing tags should be unchanged after dry-run"
+        assert label_names_before == label_names_after, "Existing tags should be unchanged after dry-run"
         assert existing_tag in label_names_after, "Existing tag should still be present"
-        assert (
-            new_tag not in label_names_after
-        ), "New tag should not be added in dry-run"
+        assert new_tag not in label_names_after, "New tag should not be added in dry-run"
 
     def test_dry_run_output_format_consistency(self, confluence_client, test_page):
         """Test that dry-run output format is consistent across commands."""

@@ -23,7 +23,9 @@ from src.utils import sanitize_text
 @click.argument("tag_pairs", nargs=-1, required=True)
 @click.option("--interactive", is_flag=True, help="Confirm each action interactively")
 @click.option(
-    "--abort-key", default="q", help="Key to abort all operations in interactive mode"
+    "--abort-key",
+    default="q",
+    help="Key to abort all operations in interactive mode",
 )
 @click.option(
     "--cql-exclude",
@@ -51,9 +53,7 @@ def replace(ctx, cql_expression, tag_pairs, interactive, abort_key, cql_exclude)
             old_tag, new_tag = pair.split("=", 1)  # Split on first equals sign
             tag_mapping[old_tag.strip()] = new_tag.strip()
         except ValueError:
-            raise click.BadParameter(
-                f"Invalid tag pair format: {pair}. Use format 'oldtag=newtag'"
-            )
+            raise click.BadParameter(f"Invalid tag pair format: {pair}. Use format 'oldtag=newtag'")
 
     # Initialize our processors
     cql_processor = CQLProcessor(confluence)
@@ -87,15 +87,14 @@ def replace(ctx, cql_expression, tag_pairs, interactive, abort_key, cql_exclude)
         click.echo("DRY RUN: No changes will be made.")
         for page in pages:
             title = sanitize_text(page.title if page.title else "Unknown")
-            # Handle both object and dictionary access for resultGlobalContainer
+            # Handle both object and dictionary access for
+            # resultGlobalContainer
             if hasattr(page, "resultGlobalContainer"):
                 if isinstance(page.resultGlobalContainer, dict):
                     space = page.resultGlobalContainer.get("title", "Unknown")
                 else:
                     space = (
-                        page.resultGlobalContainer.title
-                        if hasattr(page.resultGlobalContainer, "title")
-                        else "Unknown"
+                        page.resultGlobalContainer.title if hasattr(page.resultGlobalContainer, "title") else "Unknown"
                     )
             else:
                 space = "Unknown"
@@ -111,9 +110,7 @@ def replace(ctx, cql_expression, tag_pairs, interactive, abort_key, cql_exclude)
     # Set up interactive handler if needed
     interactive_handler = None
     if interactive:
-        interactive_handler = InteractiveHandler(
-            default_response=True, abort_value=abort_key
-        )
+        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
 
     # Process the pages
     results = tag_manager.process_pages(
@@ -145,11 +142,5 @@ def filter_excluded_pages(
     Returns:
         Filtered list of pages
     """
-    excluded_ids = [
-        page.content.id for page in excluded_pages if page.content and page.content.id
-    ]
-    return [
-        page
-        for page in pages
-        if not (page.content and page.content.id and page.content.id in excluded_ids)
-    ]
+    excluded_ids = [page.content.id for page in excluded_pages if page.content and page.content.id]
+    return [page for page in pages if not (page.content and page.content.id and page.content.id in excluded_ids)]

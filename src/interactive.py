@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 class InteractiveHandler:
     """Handles interactive confirmations for CLI operations."""
 
-    def __init__(
-        self, default_response: bool = False, abort_value: Optional[str] = None
-    ):
+    def __init__(self, default_response: bool = False, abort_value: Optional[str] = None):
         """Initialize the InteractiveHandler.
 
         Args:
@@ -57,9 +55,7 @@ class InteractiveHandler:
             prompt += f" (Enter '{self.abort_value}' to abort all remaining operations)"
 
         # Use click's confirmation prompt
-        response = click.prompt(
-            prompt, type=str, default="y" if self.default_response else "n"
-        ).lower()
+        response = click.prompt(prompt, type=str, default="y" if self.default_response else "n").lower()
 
         # Check for abort value
         if self.abort_value and response.lower() == self.abort_value.lower():

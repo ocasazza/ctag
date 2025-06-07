@@ -131,19 +131,19 @@
           # Fix line length issues with autopep8 first
           echo "Fixing line length issues with autopep8..."
           ${pythonPackages.autopep8}/bin/autopep8 --in-place --recursive \
-            --max-line-length=88 \
+            --max-line-length=120 \
             --aggressive --aggressive \
             --select=E501 \
             src/ tests/
 
           # Format Python files with black
           echo "Formatting Python files with black..."
-          ${pythonPackages.black}/bin/black src/ tests/ --line-length 88
+          ${pythonPackages.black}/bin/black src/ tests/ --line-length 120
 
-          # Check Python files with flake8 (more lenient settings)
+          # Check Python files with flake8 (consistent with pyproject.toml)
           echo "Checking Python files with flake8..."
           ${pythonPackages.flake8}/bin/flake8 src/ tests/ \
-            --max-line-length=88 \
+            --max-line-length=120 \
             --extend-ignore=E203,W503,F401,F541,E501,E122 \
             --exclude=__pycache__,*.pyc,.git,build,dist \
             || echo "Note: Some flake8 warnings found. Consider reviewing them."

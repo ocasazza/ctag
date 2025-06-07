@@ -14,9 +14,7 @@ from typing import Any, Dict, Optional, Type
 from pydantic import BaseModel, create_model
 
 
-def create_model_from_schema(
-    schema: Dict[str, Any], model_name: str
-) -> Type[BaseModel]:
+def create_model_from_schema(schema: Dict[str, Any], model_name: str) -> Type[BaseModel]:
     """Create a Pydantic model from a JSON schema.
 
     Args:

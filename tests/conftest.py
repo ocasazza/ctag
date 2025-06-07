@@ -33,12 +33,17 @@ def confluence_client():
         load_dotenv()
 
     # Check if required environment variables are set
-    required_vars = ["CONFLUENCE_URL", "CONFLUENCE_USERNAME", "ATLASSIAN_TOKEN"]
+    required_vars = [
+        "CONFLUENCE_URL",
+        "CONFLUENCE_USERNAME",
+        "ATLASSIAN_TOKEN",
+    ]
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
 
     if missing_vars:
         pytest.skip(
-            f"Missing required environment variables: {', '.join(missing_vars)}"
+            f"Missing required environment variables: {
+        ', '.join(missing_vars)}"
         )
 
     confluence = Confluence(
@@ -59,9 +64,7 @@ def test_page(confluence_client):
 
     try:
         # Create the page
-        page = confluence_client.create_page(
-            space=TEST_SPACE_KEY, title=title, body=body
-        )
+        page = confluence_client.create_page(space=TEST_SPACE_KEY, title=title, body=body)
 
         page_id = page["id"]
 

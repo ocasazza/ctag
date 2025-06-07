@@ -52,9 +52,7 @@ class CQLProcessor:
 
         try:
             logger.info(f"Executing CQL query: {cql_expression}")
-            results = self.confluence.cql(
-                cql=cql_expression, start=start, limit=limit, expand=expand
-            )
+            results = self.confluence.cql(cql=cql_expression, start=start, limit=limit, expand=expand)
 
             # Add debug logging
             logger.info(f"Results type: {type(results)}")
@@ -76,11 +74,10 @@ class CQLProcessor:
                     if isinstance(parsed_results, dict):
                         results_list = parsed_results.get("results", [])
                     else:
-                        results_list = (
-                            parsed_results if isinstance(parsed_results, list) else []
-                        )
+                        results_list = parsed_results if isinstance(parsed_results, list) else []
                     logger.info(
-                        f"Parsed results from string, got {len(results_list)} items"
+                        f"Parsed results from string, got {
+        len(results_list)} items"
                     )
                 except json.JSONDecodeError:
                     logger.error("Failed to parse results string as JSON")
@@ -94,7 +91,8 @@ class CQLProcessor:
             pages: List[SearchResultItem] = []
             for item in results_list:
                 try:
-                    # Try to use model_validate (Pydantic v2) or parse_obj (Pydantic v1)
+                    # Try to use model_validate (Pydantic v2) or parse_obj
+                    # (Pydantic v1)
                     if hasattr(SearchResultItem, "model_validate"):
                         pages.append(SearchResultItem.model_validate(item))
                     elif hasattr(SearchResultItem, "parse_obj"):
@@ -119,7 +117,8 @@ class CQLProcessor:
                         )
                     except Exception as e2:
                         logger.error(
-                            f"Failed to create even minimal SearchResultItem: {str(e2)}"
+                            f"Failed to create even minimal SearchResultItem: {
+        str(e2)}"
                         )
                         logger.error(f"Item: {item}")
 
@@ -128,11 +127,17 @@ class CQLProcessor:
             return pages
 
         except Exception as e:
-            logger.error(f"Error executing CQL query '{cql_expression}': {str(e)}")
+            logger.error(
+                f"Error executing CQL query '{cql_expression}': {
+        str(e)}"
+            )
             return []
 
     def get_all_results(
-        self, cql_expression: str, expand: Optional[str] = None, batch_size: int = 100
+        self,
+        cql_expression: str,
+        expand: Optional[str] = None,
+        batch_size: int = 100,
     ) -> List[SearchResultItem]:
         """Get all results for a CQL query, handling pagination.
 

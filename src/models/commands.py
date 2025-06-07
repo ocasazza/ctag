@@ -23,13 +23,9 @@ command_schema = commands_schema["properties"]["commands"]["items"]
 
 # Create Pydantic models from JSON schema
 # This automatically generates models with all the fields defined in the schema
-CommandModel = create_model_from_schema(
-    schema=command_schema, model_name="CommandModel"
-)
+CommandModel = create_model_from_schema(schema=command_schema, model_name="CommandModel")
 
-CommandsFileModel = create_model_from_schema(
-    schema=commands_schema, model_name="CommandsFileModel"
-)
+CommandsFileModel = create_model_from_schema(schema=commands_schema, model_name="CommandsFileModel")
 
 # Export the models for use in other modules
 __all__ = ["CommandModel", "CommandsFileModel"]

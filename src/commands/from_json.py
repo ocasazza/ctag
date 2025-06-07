@@ -13,7 +13,11 @@ import click
 
 from src.cql import CQLProcessor
 from src.interactive import InteractiveHandler
-from src.json_processor import JSONCommand, read_commands_from_json, validate_json_file
+from src.json_processor import (
+    JSONCommand,
+    read_commands_from_json,
+    validate_json_file,
+)
 from src.models.search_results import SearchResultItem
 from src.tags import TagManager
 from src.utils import sanitize_text
@@ -25,7 +29,9 @@ from src.utils import sanitize_text
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
 @click.option(
-    "--abort-key", default="q", help="Key to abort all operations in interactive mode"
+    "--abort-key",
+    default="q",
+    help="Key to abort all operations in interactive mode",
 )
 @click.pass_context
 def from_json(ctx, json_file, abort_key):
@@ -134,7 +140,8 @@ def from_json(ctx, json_file, abort_key):
 
                 if command.action == "add":
                     click.echo(
-                        f"Would add tags {command.tags} to '{title}' (Space: {space})"
+                        f"Would add tags {
+        command.tags} to '{title}' (Space: {space})"
                     )
                 elif command.action == "remove":
                     click.echo(
@@ -154,9 +161,7 @@ def from_json(ctx, json_file, abort_key):
         # Set up interactive handler if needed
         interactive_handler = None
         if command.interactive:
-            interactive_handler = InteractiveHandler(
-                default_response=True, abort_value=abort_key
-            )
+            interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
 
         # Process the pages
         if command.action in ("add", "remove"):
@@ -214,11 +219,5 @@ def filter_excluded_pages(
     Returns:
         Filtered list of pages
     """
-    excluded_ids = [
-        page.content.id for page in excluded_pages if page.content and page.content.id
-    ]
-    return [
-        page
-        for page in pages
-        if not (page.content and page.content.id and page.content.id in excluded_ids)
-    ]
+    excluded_ids = [page.content.id for page in excluded_pages if page.content and page.content.id]
+    return [page for page in pages if not (page.content and page.content.id and page.content.id in excluded_ids)]

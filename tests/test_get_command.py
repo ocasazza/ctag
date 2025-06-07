@@ -122,9 +122,7 @@ def test_get_tags_with_cql_exclude(confluence_client, test_page, cleanup_tags):
 
     # Verify the page was excluded
     assert "Excluded" in stdout, "Exclusion message not found in output"
-    assert (
-        "0 pages remaining" in stdout or "No pages found" in stdout
-    ), "Page should have been excluded"
+    assert "0 pages remaining" in stdout or "No pages found" in stdout, "Page should have been excluded"
     assert returncode == 0, f"Command failed with return code {returncode}"
 
 

@@ -21,7 +21,9 @@ from src.utils import sanitize_text
 
 @click.command()
 @click.option(
-    "--abort-key", default="q", help="Key to abort all operations in interactive mode"
+    "--abort-key",
+    default="q",
+    help="Key to abort all operations in interactive mode",
 )
 @click.pass_context
 def from_stdin_json(ctx, abort_key):
@@ -36,9 +38,7 @@ def from_stdin_json(ctx, abort_key):
         echo '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["tag1"]}]}' | ctag from_stdin_json
     """
     if not is_stdin_available():
-        click.echo(
-            "Error: No data provided via stdin. Use a pipe or redirect to provide JSON data."
-        )
+        click.echo("Error: No data provided via stdin. Use a pipe or redirect to provide JSON data.")
         return
 
     confluence = ctx.obj["CONFLUENCE"]
@@ -109,7 +109,8 @@ def from_stdin_json(ctx, abort_key):
 
                 if command.action == "add":
                     click.echo(
-                        f"Would add tags {command.tags} to '{title}' (Space: {space})"
+                        f"Would add tags {
+        command.tags} to '{title}' (Space: {space})"
                     )
                 elif command.action == "remove":
                     click.echo(
@@ -129,9 +130,7 @@ def from_stdin_json(ctx, abort_key):
         # Set up interactive handler if needed
         interactive_handler = None
         if command.interactive:
-            interactive_handler = InteractiveHandler(
-                default_response=True, abort_value=abort_key
-            )
+            interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
 
         # Process the pages
         if command.action in ("add", "remove"):
@@ -189,11 +188,5 @@ def filter_excluded_pages(
     Returns:
         Filtered list of pages
     """
-    excluded_ids = [
-        page.content.id for page in excluded_pages if page.content and page.content.id
-    ]
-    return [
-        page
-        for page in pages
-        if not (page.content and page.content.id and page.content.id in excluded_ids)
-    ]
+    excluded_ids = [page.content.id for page in excluded_pages if page.content and page.content.id]
+    return [page for page in pages if not (page.content and page.content.id and page.content.id in excluded_ids)]

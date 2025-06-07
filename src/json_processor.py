@@ -30,8 +30,7 @@ class JSONCommand:
         self.cql_expression = command_model.cql_expression.strip()
         self.interactive = (
             command_model.interactive
-            if hasattr(command_model, "interactive")
-            and command_model.interactive is not None
+            if hasattr(command_model, "interactive") and command_model.interactive is not None
             else False
         )
         self.cql_exclude = (
@@ -47,7 +46,8 @@ class JSONCommand:
                 self.tag_mapping = None
             else:
                 raise ValueError(
-                    f"For '{self.action}' action, 'tags' must be a list of strings"
+                    f"For '{
+        self.action}' action, 'tags' must be a list of strings"
                 )
         else:  # replace
             if isinstance(command_model.tags, dict):
@@ -66,7 +66,12 @@ class JSONCommand:
         else:
             tags_info = f"tag_mapping={self.tag_mapping}"
 
-        exclude_info = f", exclude={self.cql_exclude}" if self.cql_exclude else ""
+        exclude_info = (
+            f", exclude={
+    self.cql_exclude}"
+            if self.cql_exclude
+            else ""
+        )
         interactive_info = ", interactive=True" if self.interactive else ""
 
         return f"JSONCommand(action={
