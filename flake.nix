@@ -81,6 +81,7 @@
           buildInputs = [
             pythonEnv
             pkgs.python3Packages.pip  # Keep pip available for edge cases
+            ctag  # Include the built ctag package
           ];
 
           shellHook = ''
@@ -94,7 +95,7 @@
             fi
 
             # Install the local package in development mode (editable install)
-            pip install -e .
+            pip install -e . --no-deps 2>/dev/null || true
           '';
         };
 
