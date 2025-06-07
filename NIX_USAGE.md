@@ -70,13 +70,14 @@ nix build
 ### Packages
 - `packages.default` / `packages.ctag`: The ctag CLI tool
 - Built with all runtime dependencies included
+- Uses modern `pyproject.toml` configuration
 
 ### Development Shell
 - Python 3.12 with all runtime and development dependencies
 - Development tools: pytest, pytest-cov, pytest-mock, flake8, black, isort, mypy
 - Automatic PYTHONPATH setup pointing to `src/`
 - Auto-creation of `.env` file from `.env.example` if it doesn't exist
-- Helpful welcome message with common commands
+- Built-in `ctag` command available immediately
 
 ### Apps
 - `apps.default` / `apps.ctag`: Direct execution of ctag

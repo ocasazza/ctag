@@ -20,8 +20,9 @@ jobs:
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@main
 
-    - name: Setup Nix cache
-      uses: DeterminateSystems/magic-nix-cache-action@main
+    # - name: Setup Nix cache
+    #   uses: DeterminateSystems/magic-nix-cache-action@main
+    #   continue-on-error: true
 
     - name: Check flake
       run: nix flake check
@@ -62,6 +63,7 @@ jobs:
 
     - name: Setup Nix cache
       uses: DeterminateSystems/magic-nix-cache-action@main
+      continue-on-error: true
 
     - name: Run linting
       run: nix develop --command python -m flake8 src/
@@ -81,6 +83,7 @@ jobs:
 
     - name: Setup Nix cache
       uses: DeterminateSystems/magic-nix-cache-action@main
+      continue-on-error: true
 
     - name: Build ctag package
       run: nix build
@@ -102,6 +105,7 @@ jobs:
 
     - name: Setup Nix cache
       uses: DeterminateSystems/magic-nix-cache-action@main
+      continue-on-error: true
 
     - name: Run tests
       run: nix develop --command python -m pytest
