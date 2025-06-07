@@ -26,7 +26,7 @@ class TestDryRunFunctionality:
         tag = f"test-tag-{random_string()}"
 
         # Run with dry-run
-        cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {tag}'
+        cmd = f'python -m src.main --dry-run add "id = {page_id}" {tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Verify command succeeded
@@ -48,7 +48,7 @@ class TestDryRunFunctionality:
         cleanup_tags.append((page_id, tag))
 
         # Run remove with dry-run
-        cmd = f'python -m src.main --dry-run remove "contentId = {page_id}" {tag}'
+        cmd = f'python -m src.main --dry-run remove "id = {page_id}" {tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Verify command succeeded
@@ -73,7 +73,7 @@ class TestDryRunFunctionality:
         cleanup_tags.append((page_id, old_tag))
 
         # Run replace with dry-run
-        cmd = f'python -m src.main --dry-run replace "contentId = {page_id}" {old_tag}={new_tag}'
+        cmd = f'python -m src.main --dry-run replace "id = {page_id}" {old_tag}={new_tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Verify command succeeded
@@ -98,7 +98,7 @@ class TestDryRunFunctionality:
 
         # Run with dry-run and multiple tags
         tags_str = " ".join(tags)
-        cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {tags_str}'
+        cmd = f'python -m src.main --dry-run add "id = {page_id}" {tags_str}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Verify command succeeded
@@ -116,7 +116,7 @@ class TestDryRunFunctionality:
         tag = f"test-tag-{random_string()}"
 
         # Run with dry-run on nonexistent page
-        cmd = f'python -m src.main --dry-run add "contentId = {nonexistent_id}" {tag}'
+        cmd = f'python -m src.main --dry-run add "id = {nonexistent_id}" {tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Should succeed but find no pages
@@ -135,7 +135,7 @@ class TestDryRunFunctionality:
 
         # Run with dry-run and exclude
         cmd = (
-            f'python -m src.main --dry-run add "contentId = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
+            f'python -m src.main --dry-run add "id = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
         )
         stdout, stderr, returncode = run_ctag_command(cmd)
 
@@ -150,7 +150,7 @@ class TestDryRunFunctionality:
         tag = f"test-tag-{random_string()}"
 
         # Run with both dry-run and progress
-        cmd = f'python -m src.main --dry-run --progress true add "contentId = {page_id}" {tag}'
+        cmd = f'python -m src.main --dry-run --progress true add "id = {page_id}" {tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         # Verify command succeeded
@@ -183,7 +183,7 @@ class TestDryRunIntegration:
         label_names_before = [label["name"] for label in labels_before.get("results", [])]
 
         # Run dry-run add
-        cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {new_tag}'
+        cmd = f'python -m src.main --dry-run add "id = {page_id}" {new_tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         assert_command_success(returncode, stderr, "dry-run preserving existing tags")
@@ -202,7 +202,7 @@ class TestDryRunIntegration:
         tag = f"test-tag-{random_string()}"
 
         # Test add command dry-run output
-        cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {tag}'
+        cmd = f'python -m src.main --dry-run add "id = {page_id}" {tag}'
         stdout, stderr, returncode = run_ctag_command(cmd)
 
         assert_command_success(returncode, stderr, "dry-run output format test")

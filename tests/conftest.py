@@ -70,10 +70,19 @@ def test_page(confluence_client):
 
         page_id = page["id"]
 
+        # Wait for Confluence to index the page
+        import time
+
+        print(f"Created test page {page_id}, waiting for indexing...")
+        time.sleep(5)  # Give Confluence time to index the page
+
         yield page_id, title, TEST_SPACE_KEY
 
         # Cleanup: Delete the test page
-        confluence_client.remove_page(page_id)
+        try:
+            confluence_client.remove_page(page_id)
+        except Exception as cleanup_error:
+            print(f"Warning: Failed to cleanup test page {page_id}: {cleanup_error}")
     except Exception as e:
         pytest.skip(f"Failed to create test page: {str(e)}")
 

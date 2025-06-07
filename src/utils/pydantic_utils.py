@@ -9,7 +9,7 @@ including creating models from JSON schemas.
 """
 
 import json
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, Union
 
 from pydantic import BaseModel, create_model
 
@@ -62,13 +62,29 @@ def _get_field_type(field_schema: Dict[str, Any]) -> Any:
         return bool
     elif schema_type == "array":
         items = field_schema.get("items", {})
-        item_type = _get_field_type(items)
-        return list[item_type]
+        if items.get("type") == "object" and "properties" in items:
+            # For arrays of objects, create a nested model
+            item_model = create_model_from_schema(items, f"{field_schema.get('title', 'Item')}Model")
+            return list[item_model]
+        else:
+            item_type = _get_field_type(items)
+            return list[item_type]
     elif schema_type == "object":
         return Dict[str, Any]
     elif schema_type is None and "anyOf" in field_schema:
         # Handle anyOf by using the first type
         return _get_field_type(field_schema["anyOf"][0])
+    elif schema_type is None and "oneOf" in field_schema:
+        # Handle oneOf by using Any (since it can be multiple types)
+        return Any
+    elif isinstance(schema_type, list):
+        # Handle type arrays like ["string", "null"]
+        non_null_types = [t for t in schema_type if t != "null"]
+        if non_null_types:
+            # For nullable types, use Optional
+            base_type = _get_field_type({"type": non_null_types[0]})
+            return Optional[base_type]
+        return Any
     else:
         # Default to Any for unknown types
         return Any

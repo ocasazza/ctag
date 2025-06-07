@@ -45,7 +45,7 @@ def test_remove_multiple_tags(confluence_client, test_page):
         confluence_client.set_page_label(page_id, tag)
 
     # Run the command
-    cmd = f'ctag remove "contentId = {page_id}" {" ".join(tags)}'
+    cmd = f'ctag remove "id = {page_id}" {" ".join(tags)}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tags were removed
@@ -72,7 +72,7 @@ def test_remove_tag_dry_run(confluence_client, test_page):
     assert tag in label_names_before, f"Tag {tag} was not added to the page"
 
     # Run the command with dry run flag
-    cmd = f'ctag --dry-run remove "contentId = {page_id}" {tag}'
+    cmd = f'ctag --dry-run remove "id = {page_id}" {tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT removed (dry run)
@@ -105,7 +105,7 @@ def test_remove_tag_with_cql_exclude(confluence_client, test_page, cleanup_tags)
     assert tag in label_names_before, f"Tag {tag} was not added to the page"
 
     # Run the command with exclude
-    cmd = f'ctag remove "contentId = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
+    cmd = f'ctag remove "id = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT removed (excluded)
@@ -125,7 +125,7 @@ def test_remove_nonexistent_tag(confluence_client, test_page):
     tag = f"nonexistent-tag-{random_string()}"
 
     # Run the command
-    cmd = f'ctag remove "contentId = {page_id}" {tag}'
+    cmd = f'ctag remove "id = {page_id}" {tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the command completed successfully

@@ -65,6 +65,8 @@ def replace(ctx, cql_expression, tag_pairs, interactive, abort_key, cql_exclude)
 
     if not pages:
         click.echo("No pages found matching the CQL expression.")
+        if dry_run:
+            click.echo("DRY RUN: No changes will be made.")
         return
 
     click.echo(f"Found {len(pages)} matching pages.")

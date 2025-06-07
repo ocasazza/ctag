@@ -35,6 +35,7 @@
           pytest
           pytest-cov
           pytest-mock
+          pytest-xdist
           flake8
           black
           isort

@@ -47,7 +47,7 @@ def test_from_stdin_json_remove(confluence_client, test_page):
         "commands": [
             {
                 "action": "remove",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": [tag],
                 "interactive": False,
                 "cql_exclude": None,
@@ -82,7 +82,7 @@ def test_from_stdin_json_replace(confluence_client, test_page, cleanup_tags):
         "commands": [
             {
                 "action": "replace",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": {old_tag: new_tag},
                 "interactive": False,
                 "cql_exclude": None,
@@ -124,21 +124,21 @@ def test_from_stdin_json_multiple_commands(confluence_client, test_page, cleanup
         "commands": [
             {
                 "action": "add",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": [add_tag],
                 "interactive": False,
                 "cql_exclude": None,
             },
             {
                 "action": "remove",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": [remove_tag],
                 "interactive": False,
                 "cql_exclude": None,
             },
             {
                 "action": "replace",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": {old_tag: new_tag},
                 "interactive": False,
                 "cql_exclude": None,
@@ -176,7 +176,7 @@ def test_from_stdin_json_dry_run(confluence_client, test_page):
         "commands": [
             {
                 "action": "add",
-                "cql_expression": f"contentId = {page_id}",
+                "cql_expression": f"id = {page_id}",
                 "tags": [tag],
                 "interactive": False,
                 "cql_exclude": None,

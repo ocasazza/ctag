@@ -23,7 +23,7 @@ def test_add_single_tag(confluence_client, test_page, cleanup_tags):
     assert tag not in label_names_before, f"Tag {tag} already exists on the page"
 
     # Run the add command
-    cmd = f'python -m src.main add "contentId = {page_id}" {tag}'
+    cmd = f'python -m src.main add "id = {page_id}" {tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Add to cleanup list
@@ -52,7 +52,7 @@ def test_add_multiple_tags(confluence_client, test_page, cleanup_tags):
 
     # Run the add command with multiple tags
     tags_str = " ".join(tags)
-    cmd = f'python -m src.main add "contentId = {page_id}" {tags_str}'
+    cmd = f'python -m src.main add "id = {page_id}" {tags_str}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Add to cleanup list
@@ -81,7 +81,7 @@ def test_add_tag_dry_run(confluence_client, test_page):
     assert tag not in label_names_before, f"Tag {tag} already exists on the page"
 
     # Run the command with dry run flag
-    cmd = f'python -m src.main --dry-run add "contentId = {page_id}" {tag}'
+    cmd = f'python -m src.main --dry-run add "id = {page_id}" {tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT added (dry run)
@@ -108,7 +108,7 @@ def test_add_tag_with_cql_exclude(confluence_client, test_page, cleanup_tags):
     assert tag not in label_names_before, f"Tag {tag} already exists on the page"
 
     # Run the command with exclude
-    cmd = f'python -m src.main add "contentId = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
+    cmd = f'python -m src.main add "id = {page_id}" {tag} --cql-exclude "label = \'{exclude_tag}\'"'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT added (excluded)
@@ -125,7 +125,7 @@ def test_add_tag_nonexistent_page(confluence_client):
     tag = f"test-tag-{random_string()}"
 
     # Run the command
-    cmd = f'python -m src.main add "contentId = {nonexistent_id}" {tag}'
+    cmd = f'python -m src.main add "id = {nonexistent_id}" {tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the command completed but found no pages

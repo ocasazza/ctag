@@ -55,7 +55,7 @@ def test_replace_multiple_tags(confluence_client, test_page, cleanup_tags):
     tag_pairs = [f"{old}={new}" for old, new in zip(old_tags, new_tags)]
 
     # Run the command
-    cmd = f'ctag replace "contentId = {page_id}" {" ".join(tag_pairs)}'
+    cmd = f'ctag replace "id = {page_id}" {" ".join(tag_pairs)}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Add to cleanup list
@@ -85,7 +85,7 @@ def test_replace_tag_dry_run(confluence_client, test_page):
     confluence_client.set_page_label(page_id, old_tag)
 
     # Run the command with dry run flag
-    cmd = f'ctag --dry-run replace "contentId = {page_id}" {old_tag}={new_tag}'
+    cmd = f'ctag --dry-run replace "id = {page_id}" {old_tag}={new_tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT replaced (dry run)
@@ -116,7 +116,7 @@ def test_replace_tag_with_cql_exclude(confluence_client, test_page, cleanup_tags
     cleanup_tags.append((page_id, exclude_tag))
 
     # Run the command with exclude
-    cmd = f'ctag replace "contentId = {page_id}" {old_tag}={new_tag} --cql-exclude "label = \'{exclude_tag}\'"'
+    cmd = f'ctag replace "id = {page_id}" {old_tag}={new_tag} --cql-exclude "label = \'{exclude_tag}\'"'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the tag was NOT replaced (excluded)
@@ -139,7 +139,7 @@ def test_replace_nonexistent_tag(confluence_client, test_page, cleanup_tags):
     new_tag = f"new-tag-{random_string()}"
 
     # Run the command
-    cmd = f'ctag replace "contentId = {page_id}" {old_tag}={new_tag}'
+    cmd = f'ctag replace "id = {page_id}" {old_tag}={new_tag}'
     stdout, stderr, returncode = run_ctag_command(cmd)
 
     # Verify the command completed successfully but didn't add the new tag

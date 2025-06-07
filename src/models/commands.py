@@ -10,22 +10,32 @@ generated from the commands JSON schema.
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Union
 
-from src.utils.pydantic_utils import create_model_from_schema
+from pydantic import BaseModel
 
 # Load the commands schema directly
 schema_path = os.path.join(os.path.dirname(__file__), "./commands.json")
 with open(schema_path, "r") as f:
     commands_schema = json.load(f)
 
-command_schema = commands_schema["properties"]["commands"]["items"]
 
-# Create Pydantic models from JSON schema
-# This automatically generates models with all the fields defined in the schema
-CommandModel = create_model_from_schema(schema=command_schema, model_name="CommandModel")
+class CommandModel(BaseModel):
+    """Model for individual commands."""
 
-CommandsFileModel = create_model_from_schema(schema=commands_schema, model_name="CommandsFileModel")
+    action: str
+    cql_expression: str
+    tags: Union[List[str], Dict[str, str]]  # List for add/remove, Dict for replace
+    interactive: Optional[bool] = False
+    cql_exclude: Optional[str] = None
+
+
+class CommandsFileModel(BaseModel):
+    """Model for the entire commands file."""
+
+    description: Optional[str] = None
+    commands: List[CommandModel]
+
 
 # Export the models for use in other modules
 __all__ = ["CommandModel", "CommandsFileModel"]

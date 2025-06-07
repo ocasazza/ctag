@@ -110,6 +110,8 @@ def from_json(ctx, json_file, abort_key):
 
         if not pages:
             click.echo("No pages found matching the CQL expression.")
+            if dry_run:
+                click.echo("DRY RUN: No changes will be made.")
             continue
 
         click.echo(f"Found {len(pages)} matching pages.")
@@ -132,11 +134,18 @@ def from_json(ctx, json_file, abort_key):
             click.echo("DRY RUN: No changes will be made.")
             for page in pages:
                 title = sanitize_text(page.title if page.title else "Unknown")
-                space = (
-                    page.resultGlobalContainer.title
-                    if page.resultGlobalContainer and page.resultGlobalContainer.title
-                    else "Unknown"
-                )
+                # Handle both object and dictionary access for resultGlobalContainer
+                if hasattr(page, "resultGlobalContainer"):
+                    if isinstance(page.resultGlobalContainer, dict):
+                        space = page.resultGlobalContainer.get("title", "Unknown")
+                    else:
+                        space = (
+                            page.resultGlobalContainer.title
+                            if hasattr(page.resultGlobalContainer, "title")
+                            else "Unknown"
+                        )
+                else:
+                    space = "Unknown"
 
                 if command.action == "add":
                     click.echo(
