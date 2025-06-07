@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Local ctag wrapper script
+cd "$(dirname "$0")"
+python -m src.main "$@"

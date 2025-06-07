@@ -12,7 +12,7 @@ from src.models.commands import CommandModel, CommandsFileModel
 from src.models.search_results import SearchResultItem
 
 __all__ = [
-    'CommandModel',
-    'CommandsFileModel',
-    'SearchResultItem',
+    "CommandModel",
+    "CommandsFileModel",
+    "SearchResultItem",
 ]

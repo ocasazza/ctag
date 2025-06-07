@@ -8,18 +8,64 @@ A command line tool for managing tags on Confluence pages in bulk. This tool all
 - **CQL Filtering**: Use Confluence Query Language to select pages based on various criteria
 - **Interactive Mode**: Confirm each action individually before it's executed
 - **Dry Run Mode**: Preview changes without making any modifications
-- **Command Files**: Execute multiple tag operations from JSON or CSV files
-- **Stdin Support**: Pipe JSON or CSV data directly to the tool
-- **Command Line Arguments**: Provide JSON or CSV data directly as command line arguments
+- **Command Files**: Execute multiple tag operations from JSON files
+- **Stdin Support**: Pipe JSON data directly to the tool
 
 ## Installation
 
-### From Source
+### Using Nix Flakes (Recommended)
+
+If you have Nix with flakes enabled:
+
+```sh
+# Clone the repository
+git clone https://github.com/ocasazza/ctag.git
+cd ctag
+
+# Enter development shell
+nix develop
+
+# Or run directly without installing
+nix run . -- --help
+```
+
+For automatic environment setup with direnv:
+
+```sh
+# Install direnv if not already installed
+# Then allow the .envrc file
+direnv allow
+```
+
+### From Source (Traditional)
 
 ```sh
 git clone https://github.com/ocasazza/ctag.git
 cd ctag
 pip install -e .
+```
+
+### Nix Flake Features
+
+The Nix flake provides:
+
+- **Development Shell**: Complete development environment with all dependencies
+- **Package Build**: Build the ctag package with `nix build`
+- **Direct Execution**: Run ctag without installation using `nix run`
+- **Reproducible Environment**: Consistent development environment across machines
+
+Development shell includes:
+- Python 3 with all runtime dependencies
+- Development tools (pytest, flake8, black, isort, mypy)
+- Automatic PYTHONPATH setup
+- Auto-creation of .env file from template
+
+Available nix commands:
+```sh
+nix develop          # Enter development shell
+nix build            # Build the package
+nix run . -- --help  # Run ctag directly
+nix flake check      # Validate the flake
 ```
 
 ## Configuration
@@ -31,8 +77,8 @@ The tool requires authentication with your Confluence instance. You can configur
 Create a `.env` file in your current directory:
 
 ```
-CONFLUENCE_URL=https://your-instance.atlassian.net
-CONFLUENCE_USERNAME=your-email@example.com
+ATLASSIAN_URL=https://your-instance.atlassian.net
+ATLASSIAN_USERNAME=your-email@example.com
 ATLASSIAN_TOKEN=your-api-token
 ```
 
@@ -147,32 +193,9 @@ For `add` and `remove` actions, the `tags` field should be an array of strings. 
 
 A JSON schema file is provided in `examples/schema.json` that you can use to validate your JSON files or set up autocompletion in your editor.
 
-#### CSV Command Files
-
-You can also execute multiple tag operations from a CSV file:
-
-```sh
-ctag from_csv examples/commands.csv
-```
-
-The CSV file should have the following columns:
-- `action`: The action to perform (add, remove, or replace)
-- `cql_expression`: The CQL query to select pages
-- `tags`: For add/remove actions, a comma-separated list of tags; for replace actions, a comma-separated list of old=new pairs
-- `interactive`: (optional) Whether to confirm each action interactively (true/false)
-- `cql_exclude`: (optional) CQL expression to match pages that should be excluded
-
-Example CSV file:
-```csv
-action,cql_expression,tags,interactive,cql_exclude
-add,"space = DOCS AND title ~ ""Project""","documentation,project",false,
-remove,space = ARCHIVE,"outdated,deprecated",true,"label = ""keep"""
-replace,"space = DOCS AND label = ""old-tag""","old-tag=new-tag,typo=correct",false,"label = ""do-not-modify"""
-```
-
 #### Using Stdin (Pipes)
 
-You can pipe JSON or CSV data directly to the tool:
+You can pipe JSON data directly to the tool:
 
 ```sh
 # Pipe JSON data
@@ -180,26 +203,6 @@ cat examples/commands.json | ctag from_stdin_json
 
 # Generate JSON data dynamically and pipe it
 echo '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["tag1"]}]}' | ctag from_stdin_json
-
-# Pipe CSV data
-cat examples/commands.csv | ctag from_stdin_csv
-
-# Generate CSV data dynamically and pipe it
-echo 'action,cql_expression,tags
-add,space = DOCS,tag1,tag2' | ctag from_stdin_csv
-```
-
-#### Using Command Line Arguments
-
-You can also provide JSON or CSV data directly as command line arguments:
-
-```sh
-# Provide JSON data as a command line argument
-ctag from_json_string '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["tag1"]}]}'
-
-# Provide CSV data as a command line argument
-ctag from_csv_string 'action,cql_expression,tags
-add,space = DOCS,tag1,tag2'
 ```
 
 #### Dry Run Mode
@@ -208,9 +211,7 @@ You can combine any of these input methods with the `--dry-run` flag to preview 
 
 ```sh
 ctag from_json examples/commands.json --dry-run
-ctag from_csv examples/commands.csv --dry-run
 ctag from_stdin_json --dry-run < examples/commands.json
-ctag from_json_string '{"commands":[...]}' --dry-run
 ```
 
 ## Documentation
