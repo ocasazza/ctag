@@ -90,7 +90,9 @@ def add(ctx, cql_expression, tags, interactive, abort_key, cql_exclude, dry_run)
                     space = page.resultGlobalContainer.get("title", "Unknown")
                 else:
                     space = (
-                        page.resultGlobalContainer.title if hasattr(page.resultGlobalContainer, "title") else "Unknown"
+                        page.resultGlobalContainer.title
+                        if hasattr(page.resultGlobalContainer, "title")
+                        else "Unknown"
                     )
             else:
                 space = "Unknown"
@@ -103,7 +105,9 @@ def add(ctx, cql_expression, tags, interactive, abort_key, cql_exclude, dry_run)
     # Set up interactive handler if needed
     interactive_handler = None
     if interactive:
-        interactive_handler = InteractiveHandler(default_response=True, abort_value=abort_key)
+        interactive_handler = InteractiveHandler(
+            default_response=True, abort_value=abort_key
+        )
 
     # Process the pages
     results = tag_manager.process_pages(
@@ -135,5 +139,11 @@ def filter_excluded_pages(
     Returns:
         Filtered list of pages
     """
-    excluded_ids = [page.content.id for page in excluded_pages if page.content and page.content.id]
-    return [page for page in pages if not (page.content and page.content.id and page.content.id in excluded_ids)]
+    excluded_ids = [
+        page.content.id for page in excluded_pages if page.content and page.content.id
+    ]
+    return [
+        page
+        for page in pages
+        if not (page.content and page.content.id and page.content.id in excluded_ids)
+    ]

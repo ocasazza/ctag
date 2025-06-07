@@ -33,8 +33,8 @@ class TestConfig:
     def get_required_env_vars(cls) -> Dict[str, str]:
         """Get required environment variables for testing."""
         return {
-            "CONFLUENCE_URL": "The base URL of your Confluence instance",
-            "CONFLUENCE_USERNAME": "Your Confluence username",
+            "ATLASSIAN_URL": "The base URL of your Confluence instance",
+            "ATLASSIAN_USERNAME": "Your Confluence username",
             "ATLASSIAN_TOKEN": "Your Atlassian API token",
         }
 
@@ -84,7 +84,9 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.exclude)
 
         # Add slow marker for tests that might take longer
-        if any(keyword in item.name.lower() for keyword in ["multiple", "batch", "large"]):
+        if any(
+            keyword in item.name.lower() for keyword in ["multiple", "batch", "large"]
+        ):
             item.add_marker(pytest.mark.slow)
 
 
@@ -99,19 +101,25 @@ def assert_command_success(returncode: int, stderr: str, context: str = ""):
 
 def assert_command_failure(returncode: int, context: str = ""):
     """Assert that a command failed as expected."""
-    assert returncode != 0, f"Command should have failed{' ' + context if context else ''}"
+    assert (
+        returncode != 0
+    ), f"Command should have failed{' ' + context if context else ''}"
 
 
 def assert_dry_run_output(stdout: str, action: str, tags: list, page_title: str = None):
     """Assert that dry-run output contains expected information."""
     assert "DRY RUN" in stdout, "Dry-run output should contain 'DRY RUN'"
-    assert f"Would {action}" in stdout, f"Dry-run output should indicate it would {action}"
+    assert (
+        f"Would {action}" in stdout
+    ), f"Dry-run output should indicate it would {action}"
 
     for tag in tags:
         assert tag in stdout, f"Tag '{tag}' should be mentioned in dry-run output"
 
     if page_title:
-        assert page_title in stdout, f"Page title '{page_title}' should be mentioned in dry-run output"
+        assert (
+            page_title in stdout
+        ), f"Page title '{page_title}' should be mentioned in dry-run output"
 
 
 def assert_tags_present(confluence_client, page_id: str, expected_tags: list):
@@ -120,7 +128,9 @@ def assert_tags_present(confluence_client, page_id: str, expected_tags: list):
     label_names = [label["name"] for label in labels.get("results", [])]
 
     for tag in expected_tags:
-        assert tag in label_names, f"Tag '{tag}' was not found on page {page_id}. Found tags: {label_names}"
+        assert (
+            tag in label_names
+        ), f"Tag '{tag}' was not found on page {page_id}. Found tags: {label_names}"
 
 
 def assert_tags_absent(confluence_client, page_id: str, expected_absent_tags: list):

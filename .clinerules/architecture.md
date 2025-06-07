@@ -159,7 +159,7 @@ ctag from-stdin-json [OPTIONS]
 
 ### Configuration
 - Environment-based configuration using `.env` file
-- Required variables: `CONFLUENCE_URL`, `CONFLUENCE_USERNAME`, `ATLASSIAN_TOKEN`
+- Required variables: `ATLASSIAN_URL`, `ATLASSIAN_USERNAME`, `ATLASSIAN_TOKEN`
 - Global CLI options: `--dry-run`, `--progress`, `--recurse`
 
 ### Command Pattern

@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 # Required environment variables
 REQUIRED_ENV_VARS = {
-    "CONFLUENCE_URL": "The base URL of your Confluence instance",
-    "CONFLUENCE_USERNAME": "Your Confluence username",
+    "ATLASSIAN_URL": "The base URL of your Confluence instance",
+    "ATLASSIAN_USERNAME": "Your Confluence username",
     "ATLASSIAN_TOKEN": "Your Atlassian API token",
 }
 
@@ -75,8 +75,8 @@ def cli(ctx, progress, dry_run):
 
     Configuration:
     Create a .env file with:
-    - CONFLUENCE_URL: Your Confluence instance URL
-    - CONFLUENCE_USERNAME: Your username
+    - ATLASSIAN_URL: Your Confluence instance URL
+    - ATLASSIAN_USERNAME: Your username
     - ATLASSIAN_TOKEN: Your API token
 
     Example Usage:
@@ -95,8 +95,8 @@ def cli(ctx, progress, dry_run):
 
     # Create Confluence client
     confluence = Confluence(
-        url=os.environ["CONFLUENCE_URL"],
-        username=os.environ["CONFLUENCE_USERNAME"],
+        url=os.environ["ATLASSIAN_URL"],
+        username=os.environ["ATLASSIAN_USERNAME"],
         password=os.environ["ATLASSIAN_TOKEN"],
         cloud=True,  # Set to False for server installations
     )
@@ -105,8 +105,8 @@ def cli(ctx, progress, dry_run):
         {
             "PROGRESS": progress,
             "DRY_RUN": dry_run,
-            "CONFLUENCE_URL": os.environ["CONFLUENCE_URL"],
-            "CONFLUENCE_USERNAME": os.environ["CONFLUENCE_USERNAME"],
+            "ATLASSIAN_URL": os.environ["ATLASSIAN_URL"],
+            "ATLASSIAN_USERNAME": os.environ["ATLASSIAN_USERNAME"],
             "ATLASSIAN_TOKEN": os.environ["ATLASSIAN_TOKEN"],
             "CONFLUENCE": confluence,
         }

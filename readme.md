@@ -77,8 +77,8 @@ The tool requires authentication with your Confluence instance. You can configur
 Create a `.env` file in your current directory:
 
 ```
-CONFLUENCE_URL=https://your-instance.atlassian.net
-CONFLUENCE_USERNAME=your-email@example.com
+ATLASSIAN_URL=https://your-instance.atlassian.net
+ATLASSIAN_USERNAME=your-email@example.com
 ATLASSIAN_TOKEN=your-api-token
 ```
 

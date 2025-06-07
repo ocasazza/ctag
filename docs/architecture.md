@@ -129,8 +129,8 @@ Global options:
 ## Configuration
 
 The tool is configured using environment variables or a `.env` file:
-- `CONFLUENCE_URL`: The base URL of the Confluence instance
-- `CONFLUENCE_USERNAME`: The username for authentication
+- `ATLASSIAN_URL`: The base URL of the Confluence instance
+- `ATLASSIAN_USERNAME`: The username for authentication
 - `ATLASSIAN_TOKEN`: The API token for authentication
 
 ## Example Usage

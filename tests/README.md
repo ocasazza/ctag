@@ -50,8 +50,8 @@ pytest -v
 
 The tests require a Confluence environment to run against. The following environment variables must be set:
 
-- `CONFLUENCE_URL`: The base URL of the Confluence instance
-- `CONFLUENCE_USERNAME`: The username for authentication
+- `ATLASSIAN_URL`: The base URL of the Confluence instance
+- `ATLASSIAN_USERNAME`: The username for authentication
 - `ATLASSIAN_TOKEN`: The API token for authentication
 
 These can be set in a `.env` file in the project root.

@@ -15,7 +15,7 @@ from atlassian import Confluence
 load_dotenv()
 
 # Check for required environment variables
-required_vars = ["CONFLUENCE_URL", "CONFLUENCE_USERNAME", "ATLASSIAN_TOKEN"]
+required_vars = ["ATLASSIAN_URL", "ATLASSIAN_USERNAME", "ATLASSIAN_TOKEN"]
 missing = [var for var in required_vars if not os.environ.get(var)]
 if missing:
     print(f"Missing required environment variables: {', '.join(missing)}")
@@ -23,8 +23,8 @@ if missing:
 
 # Create Confluence client
 confluence = Confluence(
-    url=os.environ["CONFLUENCE_URL"],
-    username=os.environ["CONFLUENCE_USERNAME"],
+    url=os.environ["ATLASSIAN_URL"],
+    username=os.environ["ATLASSIAN_USERNAME"],
     password=os.environ["ATLASSIAN_TOKEN"],
     cloud=True,
 )

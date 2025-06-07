@@ -34,8 +34,8 @@ def confluence_client():
 
     # Check if required environment variables are set
     required_vars = [
-        "CONFLUENCE_URL",
-        "CONFLUENCE_USERNAME",
+        "ATLASSIAN_URL",
+        "ATLASSIAN_USERNAME",
         "ATLASSIAN_TOKEN",
     ]
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
@@ -47,8 +47,8 @@ def confluence_client():
         )
 
     confluence = Confluence(
-        url=os.environ["CONFLUENCE_URL"],
-        username=os.environ["CONFLUENCE_USERNAME"],
+        url=os.environ["ATLASSIAN_URL"],
+        username=os.environ["ATLASSIAN_USERNAME"],
         password=os.environ["ATLASSIAN_TOKEN"],
         cloud=True,
     )
@@ -64,7 +64,9 @@ def test_page(confluence_client):
 
     try:
         # Create the page
-        page = confluence_client.create_page(space=TEST_SPACE_KEY, title=title, body=body)
+        page = confluence_client.create_page(
+            space=TEST_SPACE_KEY, title=title, body=body
+        )
 
         page_id = page["id"]
 
