@@ -1,0 +1,6 @@
+include pyproject.toml
+include readme.md
+include LICENSE
+include requirements.txt
+include requirements-dev.txt
+recursive-include src *.json
