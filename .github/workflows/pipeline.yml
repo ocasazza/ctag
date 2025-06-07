@@ -7,11 +7,9 @@ on:
     branches: [ main, test, dev ]
 
 jobs:
-  setup-env:
-    name: Setup Environment
+  e2e:
+    name: E2E
     runs-on: ubuntu-latest
-    outputs:
-      env-ready: ${{ steps.verify.outputs.ready }}
 
     steps:
     - name: Checkout code
