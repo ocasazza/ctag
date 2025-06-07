@@ -79,31 +79,6 @@ def test_get_tags_json_format(confluence_client, test_page, cleanup_tags):
     assert returncode == 0, f"Command failed with return code {returncode}"
 
 
-def test_get_tags_csv_format(confluence_client, test_page, cleanup_tags):
-    """Test getting tags in CSV format."""
-    page_id, title, space_key = test_page
-    tags = [f"test-tag-{random_string()}" for _ in range(2)]
-
-    # Add tags to the page
-    for tag in tags:
-        confluence_client.set_page_label(page_id, tag)
-        cleanup_tags.append((page_id, tag))
-
-    # Run the get command with CSV format
-    cmd = f"ctag get \"space = {space_key} AND title = '{title}'\" --format csv"
-    stdout, stderr, returncode = run_ctag_command(cmd)
-
-    # Verify CSV headers and content
-    assert "page_id,title,space,tags" in stdout, "CSV headers not found"
-    assert title in stdout, f"Page title {title} not found in CSV output"
-
-    # Verify tags are in the CSV
-    for tag in tags:
-        assert tag in stdout, f"Tag {tag} not found in CSV output"
-
-    assert returncode == 0, f"Command failed with return code {returncode}"
-
-
 def test_get_tags_only(confluence_client, test_page, cleanup_tags):
     """Test getting only unique tags."""
     page_id, title, space_key = test_page

@@ -93,24 +93,7 @@ ctag from-json [OPTIONS] JSON_FILE
 }
 ```
 
-#### 5. `from-csv` - Execute commands from CSV file
-```
-ctag from-csv [OPTIONS] CSV_FILE
-```
-**Arguments:**
-- `CSV_FILE` - Path to CSV file containing commands
-
-**Options:**
-- `--abort-key TEXT` - Key to abort all operations in interactive mode (default: 'q')
-
-**CSV Columns:**
-- `action` - add, remove, or replace
-- `cql_expression` - CQL query to select pages
-- `tags` - Comma-separated tags or old=new pairs for replace
-- `interactive` - true/false (optional)
-- `cql_exclude` - CQL exclude expression (optional)
-
-#### 6. `get` - Get tags from pages
+#### 5. `get` - Get tags from pages
 ```
 ctag get [OPTIONS] CQL_EXPRESSION
 ```
@@ -118,7 +101,7 @@ ctag get [OPTIONS] CQL_EXPRESSION
 - `CQL_EXPRESSION` - Confluence Query Language expression to select pages
 
 **Options:**
-- `--format CHOICE` - Output format: table, json, csv (default: table)
+- `--format CHOICE` - Output format: table, json (default: table)
 - `--show-pages/--no-show-pages` - Include page titles and spaces in output (default: True)
 - `--tags-only` - Show only unique tags across all pages
 - `--interactive` - Browse results interactively
@@ -132,7 +115,7 @@ ctag get [OPTIONS] CQL_EXPRESSION
 - `ctag get "lastmodified > -7d" --format json` - Export recent pages' tags as JSON
 - `ctag get "title ~ 'Project*'" --interactive` - Browse results interactively
 
-#### 7. `from-stdin-json` - Execute commands from stdin JSON
+#### 6. `from-stdin-json` - Execute commands from stdin JSON
 ```
 ctag from-stdin-json [OPTIONS]
 ```
@@ -145,7 +128,7 @@ ctag from-stdin-json [OPTIONS]
 
 ### Core Modules
 - `src/main.py` - CLI entry point with Click framework, handles authentication and global options
-- `src/commands/` - Individual command implementations (add, remove, replace, from_json, from_csv, from_stdin_json)
+- `src/commands/` - Individual command implementations (add, remove, replace, from_json, from_stdin_json)
 - `src/tags.py` - TagManager class for performing tag operations on Confluence pages
 - `src/cql.py` - CQLProcessor class for executing Confluence queries and handling pagination
 - `src/models/` - Pydantic models generated from JSON schemas for data validation
@@ -153,7 +136,6 @@ ctag from-stdin-json [OPTIONS]
 ### Supporting Modules
 - `src/interactive.py` - InteractiveHandler for user confirmations
 - `src/json_processor.py` - JSON command file processing and validation
-- `src/csv_processor.py` - CSV command file processing and validation
 - `src/stdin_processor.py` - Stdin input processing for piped data
 - `src/utils/` - Utility functions for text processing and Pydantic model generation
 

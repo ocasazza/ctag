@@ -10,8 +10,6 @@ from Confluence pages matching a CQL expression.
 
 import click
 import json
-import csv
-import io
 from typing import List, Dict, Set, Optional
 from src.cql import CQLProcessor
 from src.models.search_results import SearchResultItem
@@ -25,7 +23,7 @@ from src.utils import sanitize_text
 @click.option(
     "--format",
     "output_format",
-    type=click.Choice(["table", "json", "csv"], case_sensitive=False),
+    type=click.Choice(["table", "json"], case_sensitive=False),
     default="table",
     help="Output format",
 )
@@ -233,7 +231,7 @@ def format_tags_only_output(tags: Set[str], output_format: str) -> str:
 
     Args:
         tags: Set of unique tags
-        output_format: Output format ('table', 'json', 'csv')
+        output_format: Output format ('table', 'json')
 
     Returns:
         Formatted output string
@@ -242,13 +240,6 @@ def format_tags_only_output(tags: Set[str], output_format: str) -> str:
 
     if output_format == "json":
         return json.dumps(sorted_tags, indent=2, ensure_ascii=False)
-    elif output_format == "csv":
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(["tag"])
-        for tag in sorted_tags:
-            writer.writerow([tag])
-        return output.getvalue()
     else:  # table format
         if not sorted_tags:
             return "No tags found."
@@ -267,7 +258,7 @@ def format_page_data_output(
 
     Args:
         page_data: List of page dictionaries
-        output_format: Output format ('table', 'json', 'csv')
+        output_format: Output format ('table', 'json')
         show_pages: Whether to include page information
 
     Returns:
@@ -282,31 +273,6 @@ def format_page_data_output(
             for page in page_data:
                 all_tags.extend(page["tags"])
             return json.dumps(sorted(set(all_tags)), indent=2, ensure_ascii=False)
-
-    elif output_format == "csv":
-        output = io.StringIO()
-        writer = csv.writer(output)
-
-        if show_pages:
-            writer.writerow(["page_id", "title", "space", "tags"])
-            for page in page_data:
-                writer.writerow(
-                    [
-                        page["id"],
-                        page["title"],
-                        page["space"],
-                        ", ".join(page["tags"]) if page["tags"] else "",
-                    ]
-                )
-        else:
-            writer.writerow(["tag"])
-            all_tags = set()
-            for page in page_data:
-                all_tags.update(page["tags"])
-            for tag in sorted(all_tags):
-                writer.writerow([tag])
-
-        return output.getvalue()
 
     else:  # table format
         if not page_data:

@@ -10,7 +10,6 @@ The test suite is organized by command:
 - `test_remove_command.py`: Tests for the `remove` command
 - `test_replace_command.py`: Tests for the `replace` command
 - `test_from_json.py`: Tests for the `from-json` command
-- `test_from_csv.py`: Tests for the `from-csv` command
 - `test_from_stdin_json.py`: Tests for the `from-stdin-json` command
 
 ## Test Fixtures

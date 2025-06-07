@@ -47,21 +47,14 @@ Handles reading and validating JSON command files:
 - Validating JSON against a schema
 - Converting JSON data to command objects
 
-### 6. CSV Processor (`src/csv_processor.py`)
-
-Handles reading and validating CSV command files:
-- Reading commands from CSV files
-- Validating CSV file structure
-- Parsing CSV data into command objects
-
-### 7. Stdin Processor (`src/stdin_processor.py`)
+### 6. Stdin Processor (`src/stdin_processor.py`)
 
 Handles reading commands from stdin and command line arguments:
-- Reading JSON and CSV data from stdin (pipes)
+- Reading JSON data from stdin (pipes)
 - Validating the input data structure
 - Converting input data to command objects
 
-### 8. Models (`src/models/`)
+### 7. Models (`src/models/`)
 
 Provides Pydantic models for data validation and type checking:
 - `SearchResultItem`: Represents a Confluence search result item
@@ -69,7 +62,7 @@ Provides Pydantic models for data validation and type checking:
 - `CommandsFileModel`: Represents a file containing multiple commands
 - Schema-based model generation for consistent validation
 
-### 9. Utilities (`src/utils/`)
+### 8. Utilities (`src/utils/`)
 
 Provides utility functions and helpers:
 - `pydantic_utils.py`: Functions for creating Pydantic models from JSON schemas
@@ -84,7 +77,6 @@ ctag [--dry-run] [--progress BOOLEAN]
 ├── remove <cql_expression> <tags...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── replace <cql_expression> <tag_pairs...> [--interactive] [--abort-key KEY] [--cql-exclude CQL]
 ├── from-json <json_file> [--abort-key KEY]
-├── from-csv <csv_file> [--abort-key KEY]
 └── from-stdin-json [--abort-key KEY]
 ```
 
@@ -110,20 +102,6 @@ Global options:
 2. The CLI parses the command and options
 3. The JSON processor reads and validates the JSON file
 4. For each command in the JSON file:
-   - The CQL processor executes the query to find matching pages
-   - If a CQL exclude expression is provided, matching pages are filtered out
-   - For each matching page:
-     - If interactive mode is enabled for the command, the user is prompted for confirmation
-     - The tag manager performs the requested operation on the page
-   - Results for the command are displayed to the user
-5. Overall summary is displayed to the user
-
-### CSV Command File Flow
-
-1. User enters the `from-csv` command with a path to a CSV file
-2. The CLI parses the command and options
-3. The CSV processor validates the CSV file structure and reads the commands
-4. For each command in the CSV file:
    - The CQL processor executes the query to find matching pages
    - If a CQL exclude expression is provided, matching pages are filtered out
    - For each matching page:
@@ -172,12 +150,6 @@ ctag from-json examples/commands.json
 
 # Execute commands from a JSON file with dry run mode
 ctag --dry-run from-json examples/commands.json
-
-# Execute commands from a CSV file
-ctag from-csv examples/commands.csv
-
-# Execute commands from a CSV file with dry run mode
-ctag --dry-run from-csv examples/commands.csv
 
 # Pipe JSON data to the tool
 cat examples/commands.json | ctag from-stdin-json

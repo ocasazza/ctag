@@ -18,8 +18,8 @@ from src.commands.add import add
 from src.commands.remove import remove
 from src.commands.replace import replace
 from src.commands.from_json import from_json
-from src.commands.from_csv import from_csv
 from src.commands.from_stdin_json import from_stdin_json
+from src.commands.get import get
 
 # Configure logging
 logging.basicConfig(
@@ -109,8 +109,8 @@ cli.add_command(add)
 cli.add_command(remove)
 cli.add_command(replace)
 cli.add_command(from_json)
-cli.add_command(from_csv)
 cli.add_command(from_stdin_json)
+cli.add_command(get)
 
 def main():
     """Entry point for the ctag CLI tool."""
