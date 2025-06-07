@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctag"
+version = "0.1.0"
+description = "A command line tool for managing tags on Confluence pages in bulk"
+readme = "readme.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Olive Casazza", email = "olive.casazza@schrodinger.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.6"
+dependencies = [
+    "atlassian-python-api>=3.32.0",
+    "click>=8.1.3",
+    "tqdm>=4.64.1",
+    "python-dotenv>=1.0.0",
+    "jsonschema>=4.17.3",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "flake8>=6.0.0",
+    "black",
+    "isort",
+    "mypy",
+]
+
+[project.scripts]
+ctag = "src.main:main"
+
+[project.urls]
+Homepage = "https://github.com/ocasazza/ctag"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.models" = ["*.json"]

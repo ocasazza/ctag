@@ -1,3 +1,4 @@
+include pyproject.toml
 include readme.md
 include LICENSE
 include requirements.txt

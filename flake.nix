@@ -44,16 +44,21 @@
         # Python environment with all packages
         pythonEnv = pkgs.python3.withPackages (ps: runtimeDeps ++ devDeps);
 
-        # The ctag package
+        # The ctag package - uses pyproject.toml for configuration
         ctag = pythonPackages.buildPythonPackage rec {
           pname = "ctag";
           version = "0.1.0";
-          format = "setuptools";
+          format = "pyproject";
 
           src = builtins.path {
             path = ./.;
             name = "ctag-source";
           };
+
+          nativeBuildInputs = with pythonPackages; [
+            setuptools
+            wheel
+          ];
 
           propagatedBuildInputs = runtimeDeps;
 
