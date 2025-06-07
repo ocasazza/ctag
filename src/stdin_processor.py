@@ -8,14 +8,15 @@ This module provides functionality for reading tag commands from stdin
 as part of the ctag CLI tool, supporting JSON format.
 """
 
-import sys
 import json
 import logging
-from typing import List, Dict, Optional, Any, Union
+import sys
+from typing import Any, Dict, List, Optional, Union
 
-from src.json_processor import JSONCommand, CommandModel, CommandsFileModel
+from src.json_processor import CommandModel, CommandsFileModel, JSONCommand
 
 logger = logging.getLogger(__name__)
+
 
 def read_json_from_stdin() -> List[JSONCommand]:
     """Read JSON commands from stdin.
@@ -28,9 +29,9 @@ def read_json_from_stdin() -> List[JSONCommand]:
         data = json.load(sys.stdin)
 
         # Validate and parse using Pydantic model (handle both v1 and v2)
-        if hasattr(CommandsFileModel, 'model_validate'):
+        if hasattr(CommandsFileModel, "model_validate"):
             commands_file = CommandsFileModel.model_validate(data)
-        elif hasattr(CommandsFileModel, 'parse_obj'):
+        elif hasattr(CommandsFileModel, "parse_obj"):
             commands_file = CommandsFileModel.parse_obj(data)
         else:
             commands_file = CommandsFileModel(**data)
@@ -55,6 +56,7 @@ def read_json_from_stdin() -> List[JSONCommand]:
     except Exception as e:
         logger.error(f"Error reading JSON from stdin: {str(e)}")
         raise
+
 
 def is_stdin_available() -> bool:
     """Check if stdin has data available.

@@ -6,8 +6,10 @@ End-to-end tests for the replace command.
 """
 
 import os
+
 import pytest
-from tests.conftest import run_ctag_command, random_string
+
+from tests.conftest import random_string, run_ctag_command
 
 
 def test_replace_single_tag(confluence_client, test_page, cleanup_tags):
@@ -35,7 +37,9 @@ def test_replace_single_tag(confluence_client, test_page, cleanup_tags):
     labels = confluence_client.get_page_labels(page_id)
     label_names = [label["name"] for label in labels.get("results", [])]
 
-    assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
+    assert (
+        old_tag not in label_names
+    ), f"Old tag {old_tag} was not removed from the page"
     assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
 
 
@@ -65,7 +69,9 @@ def test_replace_multiple_tags(confluence_client, test_page, cleanup_tags):
     label_names = [label["name"] for label in labels.get("results", [])]
 
     for old_tag in old_tags:
-        assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
+        assert (
+            old_tag not in label_names
+        ), f"Old tag {old_tag} was not removed from the page"
 
     for new_tag in new_tags:
         assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
@@ -91,7 +97,9 @@ def test_replace_tag_dry_run(confluence_client, test_page):
     label_names = [label["name"] for label in labels.get("results", [])]
 
     assert old_tag in label_names, f"Old tag {old_tag} was removed despite dry run mode"
-    assert new_tag not in label_names, f"New tag {new_tag} was added despite dry run mode"
+    assert (
+        new_tag not in label_names
+    ), f"New tag {new_tag} was added despite dry run mode"
     assert returncode == 0, f"Command failed with return code {returncode}"
     assert "DRY RUN" in stdout, "Dry run message not found in output"
 
@@ -145,5 +153,7 @@ def test_replace_nonexistent_tag(confluence_client, test_page, cleanup_tags):
     labels = confluence_client.get_page_labels(page_id)
     label_names = [label["name"] for label in labels.get("results", [])]
 
-    assert new_tag not in label_names, f"New tag {new_tag} was added despite old tag not existing"
+    assert (
+        new_tag not in label_names
+    ), f"New tag {new_tag} was added despite old tag not existing"
     assert returncode == 0, f"Command failed with return code {returncode}"

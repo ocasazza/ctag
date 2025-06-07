@@ -6,8 +6,10 @@ End-to-end tests for the remove command.
 """
 
 import os
+
 import pytest
-from tests.conftest import run_ctag_command, random_string
+
+from tests.conftest import random_string, run_ctag_command
 
 
 def test_remove_single_tag(confluence_client, test_page):

@@ -9,10 +9,11 @@ tag operations and CQL query processing.
 
 __version__ = "0.1.0"
 
-# Import main components for easier access
-from src.tags import TagManager
 from src.cql import CQLProcessor
 from src.interactive import InteractiveHandler
+
+# Import main components for easier access
+from src.tags import TagManager
 
 # Define public API
 __all__ = [

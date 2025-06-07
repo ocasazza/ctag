@@ -9,8 +9,10 @@ during bulk tag operations as part of the ctag CLI tool.
 """
 
 import logging
-import click
 from typing import Any, Optional
+
+import click
+
 from src.utils import sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -19,7 +21,9 @@ logger = logging.getLogger(__name__)
 class InteractiveHandler:
     """Handles interactive confirmations for CLI operations."""
 
-    def __init__(self, default_response: bool = False, abort_value: Optional[str] = None):
+    def __init__(
+        self, default_response: bool = False, abort_value: Optional[str] = None
+    ):
         """Initialize the InteractiveHandler.
 
         Args:
@@ -48,27 +52,25 @@ class InteractiveHandler:
             item = sanitize_text(item)
 
         prompt = f"{action_description} {item}"
-        
+
         if self.abort_value:
             prompt += f" (Enter '{self.abort_value}' to abort all remaining operations)"
-        
+
         # Use click's confirmation prompt
         response = click.prompt(
-            prompt,
-            type=str,
-            default='y' if self.default_response else 'n'
+            prompt, type=str, default="y" if self.default_response else "n"
         ).lower()
-        
+
         # Check for abort value
         if self.abort_value and response.lower() == self.abort_value.lower():
             click.echo("Aborting all remaining operations.")
             self.aborted = True
             return False
-            
+
         # Check for yes/no responses
-        if response in ('y', 'yes'):
+        if response in ("y", "yes"):
             return True
-        elif response in ('n', 'no'):
+        elif response in ("n", "no"):
             return False
         else:
             # Default to the default response for any other input

@@ -5,10 +5,12 @@
 End-to-end tests for the get command.
 """
 
-import os
 import json
+import os
+
 import pytest
-from tests.conftest import run_ctag_command, random_string
+
+from tests.conftest import random_string, run_ctag_command
 
 
 def test_get_tags_table_format(confluence_client, test_page, cleanup_tags):

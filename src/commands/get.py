@@ -8,13 +8,15 @@ This module defines the 'get' command for retrieving and displaying tags
 from Confluence pages matching a CQL expression.
 """
 
-import click
 import json
-from typing import List, Dict, Set, Optional
+from typing import Dict, List, Optional, Set
+
+import click
+
 from src.cql import CQLProcessor
+from src.interactive import InteractiveHandler
 from src.models.search_results import SearchResultItem
 from src.tags import TagManager
-from src.interactive import InteractiveHandler
 from src.utils import sanitize_text
 
 
@@ -92,7 +94,10 @@ def get(
             original_count = len(pages)
             pages = filter_excluded_pages(pages, excluded_pages)
             click.echo(
-                f"Excluded {original_count - len(pages)} pages. {len(pages)} pages remaining."
+                f"Excluded {
+        original_count -
+        len(pages)} pages. {
+            len(pages)} pages remaining."
             )
 
     # Collect page data with tags
@@ -219,7 +224,11 @@ def handle_interactive_browsing(
     selected_pages = []
 
     for page in page_data:
-        page_info = f"'{page['title']}' (Space: {page['space']}, Tags: {', '.join(page['tags']) if page['tags'] else 'None'})"
+        page_info = f"'{
+    page['title']}' (Space: {
+        page['space']}, Tags: {
+            ', '.join(
+                page['tags']) if page['tags'] else 'None'})"
         if interactive_handler.confirm_action(page_info, "Include in results"):
             selected_pages.append(page)
 

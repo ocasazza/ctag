@@ -5,11 +5,13 @@
 End-to-end tests for the from-stdin-json command.
 """
 
-import os
 import json
-import tempfile
+import os
 import subprocess
+import tempfile
+
 import pytest
+
 from tests.conftest import random_string
 
 
@@ -48,26 +50,23 @@ def test_from_stdin_json_remove(confluence_client, test_page):
                 "cql_expression": f"contentId = {page_id}",
                 "tags": [tag],
                 "interactive": False,
-                "cql_exclude": None
+                "cql_exclude": None,
             }
-        ]
+        ],
     }
 
     # Run the command with JSON data piped to stdin
-    cmd = f'echo \'{json.dumps(json_data)}\' | ctag from-stdin-json'
-    result = subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
+    cmd = f"echo '{json.dumps(json_data)}' | ctag from-stdin-json"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     # Verify the tag was removed
     labels = confluence_client.get_page_labels(page_id)
     label_names = [label["name"] for label in labels.get("results", [])]
 
     assert tag not in label_names, f"Tag {tag} was not removed from the page"
-    assert result.returncode == 0, f"Command failed with return code {result.returncode}"
+    assert (
+        result.returncode == 0
+    ), f"Command failed with return code {result.returncode}"
 
 
 def test_from_stdin_json_replace(confluence_client, test_page, cleanup_tags):
@@ -86,23 +85,16 @@ def test_from_stdin_json_replace(confluence_client, test_page, cleanup_tags):
             {
                 "action": "replace",
                 "cql_expression": f"contentId = {page_id}",
-                "tags": {
-                    old_tag: new_tag
-                },
+                "tags": {old_tag: new_tag},
                 "interactive": False,
-                "cql_exclude": None
+                "cql_exclude": None,
             }
-        ]
+        ],
     }
 
     # Run the command with JSON data piped to stdin
-    cmd = f'echo \'{json.dumps(json_data)}\' | ctag from-stdin-json'
-    result = subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
+    cmd = f"echo '{json.dumps(json_data)}' | ctag from-stdin-json"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     # Add to cleanup list
     cleanup_tags.append((page_id, new_tag))
@@ -111,9 +103,13 @@ def test_from_stdin_json_replace(confluence_client, test_page, cleanup_tags):
     labels = confluence_client.get_page_labels(page_id)
     label_names = [label["name"] for label in labels.get("results", [])]
 
-    assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
+    assert (
+        old_tag not in label_names
+    ), f"Old tag {old_tag} was not removed from the page"
     assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
-    assert result.returncode == 0, f"Command failed with return code {result.returncode}"
+    assert (
+        result.returncode == 0
+    ), f"Command failed with return code {result.returncode}"
 
 
 def test_from_stdin_json_multiple_commands(confluence_client, test_page, cleanup_tags):
@@ -137,35 +133,28 @@ def test_from_stdin_json_multiple_commands(confluence_client, test_page, cleanup
                 "cql_expression": f"contentId = {page_id}",
                 "tags": [add_tag],
                 "interactive": False,
-                "cql_exclude": None
+                "cql_exclude": None,
             },
             {
                 "action": "remove",
                 "cql_expression": f"contentId = {page_id}",
                 "tags": [remove_tag],
                 "interactive": False,
-                "cql_exclude": None
+                "cql_exclude": None,
             },
             {
                 "action": "replace",
                 "cql_expression": f"contentId = {page_id}",
-                "tags": {
-                    old_tag: new_tag
-                },
+                "tags": {old_tag: new_tag},
                 "interactive": False,
-                "cql_exclude": None
-            }
-        ]
+                "cql_exclude": None,
+            },
+        ],
     }
 
     # Run the command with JSON data piped to stdin
-    cmd = f'echo \'{json.dumps(json_data)}\' | ctag from-stdin-json'
-    result = subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
+    cmd = f"echo '{json.dumps(json_data)}' | ctag from-stdin-json"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     # Add to cleanup list
     cleanup_tags.append((page_id, add_tag))
@@ -176,10 +165,16 @@ def test_from_stdin_json_multiple_commands(confluence_client, test_page, cleanup
     label_names = [label["name"] for label in labels.get("results", [])]
 
     assert add_tag in label_names, f"Add tag {add_tag} was not added to the page"
-    assert remove_tag not in label_names, f"Remove tag {remove_tag} was not removed from the page"
-    assert old_tag not in label_names, f"Old tag {old_tag} was not removed from the page"
+    assert (
+        remove_tag not in label_names
+    ), f"Remove tag {remove_tag} was not removed from the page"
+    assert (
+        old_tag not in label_names
+    ), f"Old tag {old_tag} was not removed from the page"
     assert new_tag in label_names, f"New tag {new_tag} was not added to the page"
-    assert result.returncode == 0, f"Command failed with return code {result.returncode}"
+    assert (
+        result.returncode == 0
+    ), f"Command failed with return code {result.returncode}"
 
 
 def test_from_stdin_json_dry_run(confluence_client, test_page):
@@ -196,24 +191,21 @@ def test_from_stdin_json_dry_run(confluence_client, test_page):
                 "cql_expression": f"contentId = {page_id}",
                 "tags": [tag],
                 "interactive": False,
-                "cql_exclude": None
+                "cql_exclude": None,
             }
-        ]
+        ],
     }
 
     # Run the command with JSON data piped to stdin and dry run flag
-    cmd = f'echo \'{json.dumps(json_data)}\' | ctag --dry-run from-stdin-json'
-    result = subprocess.run(
-        cmd,
-        shell=True,
-        capture_output=True,
-        text=True
-    )
+    cmd = f"echo '{json.dumps(json_data)}' | ctag --dry-run from-stdin-json"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
 
     # Verify the tag was NOT added (dry run)
     labels = confluence_client.get_page_labels(page_id)
     label_names = [label["name"] for label in labels.get("results", [])]
 
     assert tag not in label_names, f"Tag {tag} was added despite dry run mode"
-    assert result.returncode == 0, f"Command failed with return code {result.returncode}"
+    assert (
+        result.returncode == 0
+    ), f"Command failed with return code {result.returncode}"
     assert "DRY RUN" in result.stdout, "Dry run message not found in output"

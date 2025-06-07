@@ -6,8 +6,10 @@ End-to-end tests for the add command.
 """
 
 import os
+
 import pytest
-from tests.conftest import run_ctag_command, random_string
+
+from tests.conftest import random_string, run_ctag_command
 
 
 def test_add_single_tag(confluence_client, test_page, cleanup_tags):
