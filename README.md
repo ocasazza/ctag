@@ -1,50 +1,220 @@
-A template Rust project with fully functional and no-frills Nix support, as well as builtin VSCode configuration to get IDE experience without any manual setup (just [install direnv](https://nixos.asia/en/direnv), open in VSCode and accept the suggestions). It uses [crane](https://crane.dev/), via [rust-flake](https://github.com/juspay/rust-flake).
+# ctag - Confluence Tag Manager
 
-> [!NOTE]
-> If you are looking for the original template based on [this blog post](https://srid.ca/rust-nix)'s use of `crate2nix`, browse from [this tag](https://github.com/srid/rust-nix-template/tree/crate2nix). The evolution of this template can be gleaned from [releases](https://github.com/srid/rust-nix-template/releases).
+A command-line tool for managing tags on Confluence pages in bulk, written in Rust with Nix for environment management.
+
+## Features
+
+- **Add, remove, or replace tags** on Confluence pages in bulk
+- **Use CQL queries** to select pages based on various criteria
+- **Interactive mode** to confirm each action before execution
+- **Dry-run mode** to preview changes without making modifications
+- **Progress bars** for long-running operations
+- **JSON-based batch operations** for complex workflows
+- **Multiple output formats** (table, JSON) for the `get` command
+
+## Prerequisites
+
+- Nix with flakes enabled
+- Confluence Cloud instance with API access
+
+## Setup
+
+### 1. Enter the development environment
+
+```bash
+nix develop
+```
+
+This will set up all required dependencies including Rust, Cargo, and development tools.
+
+### 2. Build the project
+
+```bash
+cargo build --release
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file in the project root with your Confluence credentials:
+
+```env
+ATLASSIAN_URL=https://your-domain.atlassian.net
+ATLASSIAN_USERNAME=your-email@example.com
+ATLASSIAN_TOKEN=your-api-token
+```
+
+To generate an API token, visit: https://id.atlassian.com/manage-profile/security/api-tokens
 
 ## Usage
 
-You can use [omnix](https://omnix.page/om/init.html)[^omnix] to initialize this template:
-```
-nix run nixpkgs#omnix -- init github:srid/rust-nix-template -o ~/my-rust-project
-```
+### Basic Commands
 
-[^omnix]: If initializing manually, make sure to:
-    - Change `name` in Cargo.toml.
-    - Run `cargo generate-lockfile` in the nix shelld
-
-## Adapting this template
-
-- There are two CI workflows, and one of them uses Nix which is slower (unless you configure a cache) than the other one based on rustup. Pick one or the other depending on your trade-offs.
-
-## Development (Flakes)
-
-This repo uses [Flakes](https://nixos.asia/en/flakes) from the get-go.
+#### Add tags to pages
 
 ```bash
-# Dev shell
-nix develop
+ctag add "space = DOCS" tag1 tag2 tag3
+```
 
-# or run via cargo
-nix develop -c cargo run
+#### Remove tags from pages
 
-# build
+```bash
+ctag remove "space = DOCS" old-tag
+```
+
+#### Replace tags
+
+```bash
+ctag replace "space = DOCS" old-tag=new-tag another-old=another-new
+```
+
+#### Get tags from pages
+
+```bash
+# Show all pages with their tags
+ctag get "space = DOCS"
+
+# Show only unique tags
+ctag get "space = DOCS" --tags-only
+
+# Output as JSON
+ctag get "space = DOCS" --format json
+
+# Save to file
+ctag get "space = DOCS" --output-file results.json
+```
+
+### Advanced Options
+
+#### Interactive mode
+
+Confirm each action before execution:
+
+```bash
+ctag add "space = DOCS" new-tag --interactive
+```
+
+#### Dry run
+
+Preview changes without making modifications:
+
+```bash
+ctag --dry-run add "space = DOCS" new-tag
+```
+
+#### Exclude pages
+
+Exclude specific pages from the operation:
+
+```bash
+ctag add "space = DOCS" new-tag --cql-exclude "title ~ 'Archive*'"
+```
+
+### Batch Operations
+
+#### From JSON file
+
+Create a JSON file with multiple commands:
+
+```json
+{
+  "description": "Quarterly tag updates",
+  "commands": [
+    {
+      "action": "add",
+      "cql_expression": "space = DOCS AND lastmodified > -30d",
+      "tags": ["recent", "q4-2024"],
+      "interactive": false
+    },
+    {
+      "action": "replace",
+      "cql_expression": "space = DOCS",
+      "tag_mapping": {
+        "old-tag": "new-tag",
+        "deprecated": "archived"
+      },
+      "interactive": true,
+      "cql_exclude": "title ~ 'Template*'"
+    }
+  ]
+}
+```
+
+Execute the commands:
+
+```bash
+ctag from-json commands.json
+```
+
+#### From stdin
+
+```bash
+cat commands.json | ctag from-stdin-json
+```
+
+Or:
+
+```bash
+echo '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["test"]}]}' | ctag from-stdin-json
+```
+
+## CQL Query Examples
+
+See [docs/cql-examples.md](docs/cql-examples.md) for more CQL query examples.
+
+## Development
+
+### Run tests
+
+```bash
+cargo test
+```
+
+### Format code
+
+```bash
+cargo fmt
+```
+
+### Lint code
+
+```bash
+cargo clippy
+```
+
+### Using just
+
+The project includes a `justfile` for common tasks:
+
+```bash
+just build    # Build the project
+just run      # Run the project
+just test     # Run tests
+just fmt      # Format code
+just check    # Run clippy
+```
+
+## Building with Nix
+
+To build the project using Nix:
+
+```bash
 nix build
 ```
 
-We also provide a [`justfile`](https://just.systems/) for Makefile'esque commands to be run inside of the devShell.
+The binary will be available in `./result/bin/ctag`.
 
-## Tips
+## Documentation
 
-- Run `nix flake update` to update all flake inputs.
-- Run `nix --accept-flake-config run github:juspay/omnix ci` to build _all_ outputs.
-- [pre-commit] hooks will automatically be setup in Nix shell. You can also run `pre-commit run -a` manually to run the hooks (e.g.: to autoformat the project tree using `rustfmt`, `nixpkgs-fmt`, etc.).
+Documentation is auto-generated from the source code. To view it:
 
-## Discussion
+```bash
+cargo doc --open
+```
 
-- [Zulip](https://nixos.zulipchat.com/#narrow/stream/413950-nix)
+## License
 
-## See Also
+See [LICENSE](LICENSE) file for details.
 
-- [nixos.wiki: Packaging Rust projects with nix](https://nixos.wiki/wiki/Rust#Packaging_Rust_projects_with_nix)
+## Migration from Python
+
+This project was migrated from Python to Rust. The CLI interface remains exactly the same, so all existing scripts and workflows should continue to work without modification.

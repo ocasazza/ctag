@@ -2,5 +2,6 @@
 /result
 /result-lib
 .direnv
+.env
 
 /.pre-commit-config.yaml
