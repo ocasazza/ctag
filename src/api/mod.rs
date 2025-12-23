@@ -5,7 +5,9 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::json;
 use std::collections::HashMap;
 
-use crate::models::{CqlResponse, Label, LabelsResponse, ProcessResults, SearchResultItem};
+use crate::models::{CqlResponse, LabelsResponse, SearchResultItem};
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 
 pub struct ConfluenceClient {
     client: Client,
@@ -27,7 +29,7 @@ impl ConfluenceClient {
     fn headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         let auth = format!("{}:{}", self.username, self.token);
-        let auth_header = format!("Basic {}", base64::encode(auth));
+        let auth_header = format!("Basic {}", BASE64.encode(auth));
         headers.insert(AUTHORIZATION, HeaderValue::from_str(&auth_header).unwrap());
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         headers

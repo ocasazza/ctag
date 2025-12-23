@@ -1,6 +1,6 @@
 use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
 use crate::models::ProcessResults;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Args;
 use dialoguer::Confirm;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -249,7 +249,7 @@ mod tests {
         ];
 
         for s in inputs {
-            let err = parse_tag_pairs(&[s.clone()]).unwrap_err();
+            let err = parse_tag_pairs(std::slice::from_ref(&s)).unwrap_err();
             let msg = format!("{}", err);
             assert!(
                 msg.contains("Old and new tags must be non-empty"),

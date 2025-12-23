@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! End-to-end tests that exercise the compiled `ctag` binary against a real
 //! Confluence instance.
 //!
@@ -74,12 +75,7 @@ impl SandboxConfig {
         let _ = dotenvy::from_filename(".sandbox.env");
 
         // Helper to check var and return None if missing
-        let get_var = |key| -> Option<String> {
-            match env::var(key) {
-                Ok(v) => Some(v),
-                Err(_) => None,
-            }
-        };
+        let get_var = |key| -> Option<String> { env::var(key).ok() };
 
         let base_url = match get_var("ATLASSIAN_URL") {
             Some(v) => v,
