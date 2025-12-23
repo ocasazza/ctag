@@ -18,6 +18,7 @@
           just
           nixd # Nix language server
           bacon
+          omnix
         ];
       };
     };
