@@ -102,7 +102,8 @@ impl TestConfluenceClient {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let title = format!("ctag-e2e-test-{}", now);
+        let random = fastrand::u32(..100000);
+        let title = format!("ctag-e2e-test-{}-{}", now, random);
 
         let mut body = json!({
             "type": "page",

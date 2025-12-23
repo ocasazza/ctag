@@ -32,12 +32,32 @@ pub fn run(
     client: &ConfluenceClient,
     dry_run: bool,
     show_progress: bool,
+    format: crate::models::OutputFormat,
 ) -> Result<()> {
-    ui::print_header("ADD TAGS");
+    let verbose = format == crate::models::OutputFormat::Verbose;
+    let is_structured =
+        format == crate::models::OutputFormat::Json || format == crate::models::OutputFormat::Csv;
+
+    if verbose {
+        ui::print_header("ADD TAGS");
+    }
 
     // Get matching pages
-    ui::print_step(&format!("Finding pages matching: {}", args.cql_expression));
+    let spinner = if (verbose || !show_progress) && !is_structured {
+        Some(ui::create_spinner(&format!(
+            "Finding pages matching: {}",
+            args.cql_expression
+        )))
+    } else {
+        None
+    };
+
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
+
+    if let Some(s) = spinner {
+        s.finish_and_clear();
+    }
+
     if pages.is_empty() {
         ui::print_warning("No pages found matching the CQL expression.");
         if dry_run {
@@ -45,20 +65,38 @@ pub fn run(
         }
         return Ok(());
     }
-    ui::print_info(&format!("Found {} matching pages.", pages.len()));
+
+    if verbose {
+        ui::print_info(&format!("Found {} matching pages.", pages.len()));
+    }
 
     // Apply exclusion if specified
     if let Some(cql_exclude) = &args.cql_exclude {
-        ui::print_step(&format!("Finding pages to exclude: {}", cql_exclude));
+        let spinner = if verbose || !show_progress {
+            Some(ui::create_spinner(&format!(
+                "Finding pages to exclude: {}",
+                cql_exclude
+            )))
+        } else {
+            None
+        };
+
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
+
+        if let Some(s) = spinner {
+            s.finish_and_clear();
+        }
+
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            ui::print_info(&format!(
-                "Excluded {} pages. {} pages remaining.",
-                original_count - pages.len(),
-                pages.len()
-            ));
+            if verbose {
+                ui::print_info(&format!(
+                    "Excluded {} pages. {} pages remaining.",
+                    original_count - pages.len(),
+                    pages.len()
+                ));
+            }
         }
     }
 
@@ -162,12 +200,6 @@ pub fn run(
     }
 
     // Display results
-    ui::print_summary(
-        results.total,
-        results.processed,
-        results.skipped,
-        results.success,
-        results.failed,
-    );
+    ui::print_summary(&results, format);
     Ok(())
 }

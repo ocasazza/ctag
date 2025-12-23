@@ -1,28 +1,19 @@
 use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
+use crate::models::OutputFormat;
 use crate::ui;
 use anyhow::Result;
-use clap::{Args, ValueEnum};
+use clap::Args;
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table};
+use serde::Serialize;
 use std::collections::HashSet;
-use std::fs::File;
-use std::io::Write;
-
-#[derive(Clone, ValueEnum)]
-pub enum OutputFormat {
-    Table,
-    Json,
-}
+use terminal_size::{terminal_size, Width};
 
 #[derive(Args)]
 pub struct GetArgs {
     /// CQL expression to match pages
     pub cql_expression: String,
-
-    /// Output format
-    #[arg(long, value_enum, default_value_t = OutputFormat::Table)]
-    pub format: OutputFormat,
 
     /// Include page titles and spaces in output
     #[arg(long, default_value_t = true)]
@@ -49,7 +40,7 @@ pub struct GetArgs {
     pub output_file: Option<String>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 struct PageData {
     id: String,
     title: String,
@@ -62,42 +53,76 @@ pub fn run(
     client: &ConfluenceClient,
     _dry_run: bool,
     show_progress: bool,
+    format: OutputFormat,
 ) -> Result<()> {
-    ui::print_header("GET TAGS");
+    let verbose = format == OutputFormat::Verbose;
+    let is_structured = format == OutputFormat::Json || format == OutputFormat::Csv;
+
+    if verbose {
+        ui::print_header("GET TAGS");
+    }
 
     // Get matching pages
-    ui::print_step(&format!("Finding pages matching: {}", args.cql_expression));
+    let spinner = if (verbose || !show_progress) && !is_structured {
+        Some(ui::create_spinner(&format!(
+            "Finding pages matching: {}",
+            args.cql_expression
+        )))
+    } else {
+        None
+    };
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
+    if let Some(s) = &spinner {
+        s.finish_and_clear();
+    }
+
     if pages.is_empty() {
-        match args.format {
+        match format {
             OutputFormat::Json => println!("[]"),
-            OutputFormat::Table => ui::print_warning("No pages found matching the CQL expression."),
+            OutputFormat::Csv => println!(), // Empty CSV
+            _ => ui::print_warning("No pages found matching the CQL expression."),
         }
         return Ok(());
     }
-    ui::print_info(&format!("Found {} matching pages.", pages.len()));
+    if verbose {
+        ui::print_info(&format!("Found {} matching pages.", pages.len()));
+    }
 
     // Apply exclusion if specified
     if let Some(cql_exclude) = &args.cql_exclude {
-        ui::print_step(&format!("Finding pages to exclude: {}", cql_exclude));
+        let spinner = if (verbose || !show_progress) && !is_structured {
+            Some(ui::create_spinner(&format!(
+                "Finding pages to exclude: {}",
+                cql_exclude
+            )))
+        } else {
+            None
+        };
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
+        if let Some(s) = &spinner {
+            s.finish_and_clear();
+        }
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            ui::print_info(&format!(
-                "Excluded {} pages. {} pages remaining.",
-                original_count - pages.len(),
-                pages.len()
-            ));
+            if verbose {
+                ui::print_info(&format!(
+                    "Excluded {} pages. {} pages remaining.",
+                    original_count - pages.len(),
+                    pages.len()
+                ));
+            }
         }
     }
 
     // Collect page data with tags
-    ui::print_step("Retrieving tags for pages...");
+    if verbose {
+        ui::print_step("Retrieving tags for pages...");
+    }
     let mut page_data = Vec::new();
     let mut all_tags = HashSet::new();
 
-    let progress = if show_progress {
+    let progress = if show_progress && !is_structured {
         Some(ui::create_progress_bar(pages.len() as u64))
     } else {
         None
@@ -119,9 +144,16 @@ pub fn run(
         };
         let title = sanitize_text(page.title.as_deref().unwrap_or("Unknown"));
         let space = page
-            .result_global_container
+            .content
             .as_ref()
-            .and_then(|c| c.title.as_deref())
+            .and_then(|c| c.space.as_ref())
+            .and_then(|s| s.name.as_deref())
+            .or_else(|| page.space.as_ref().and_then(|s| s.name.as_deref())) // Added check for page.space
+            .or_else(|| {
+                page.result_global_container
+                    .as_ref()
+                    .and_then(|c| c.title.as_deref())
+            })
             .unwrap_or("Unknown")
             .to_string();
 
@@ -134,34 +166,37 @@ pub fn run(
             tags,
         });
 
-        if let Some(pb) = &progress {
-            pb.inc(1);
+        if let Some(p) = &progress {
+            p.inc(1);
         }
     }
 
-    if let Some(pb) = progress {
-        pb.finish_and_clear();
+    if let Some(p) = &progress {
+        p.finish_and_clear();
     }
 
     // Generate output
     let output_content = if args.tags_only {
-        format_tags_only(&all_tags, &args.format)
+        format_tags_only(&all_tags, &format)
     } else {
-        format_page_data(&page_data, &args.format, args.show_pages)
+        format_page_data(&page_data, &format, args.show_pages, client.base_url())
     };
 
     // Output results
-    if let Some(output_file) = &args.output_file {
-        let mut file = File::create(output_file)?;
-        file.write_all(output_content.as_bytes())?;
-        ui::print_success(&format!("Results saved to {}", output_file));
+    if let Some(file_path) = args.output_file {
+        std::fs::write(&file_path, output_content)?;
+        if verbose {
+            ui::print_success(&format!("Results saved to {}", file_path));
+        }
     } else {
         println!("{}", output_content);
     }
 
-    // Display summary
-    ui::print_info(&format!("Total pages processed: {}", page_data.len()));
-    ui::print_info(&format!("Unique tags found: {}", all_tags.len()));
+    if verbose {
+        eprintln!();
+        ui::print_info(&format!("Total pages processed: {}", page_data.len()));
+        ui::print_info(&format!("Unique tags found: {}", all_tags.len()));
+    }
 
     Ok(())
 }
@@ -171,28 +206,43 @@ fn format_tags_only(tags: &HashSet<String>, format: &OutputFormat) -> String {
     sorted_tags.sort();
     match format {
         OutputFormat::Json => serde_json::to_string_pretty(&sorted_tags).unwrap_or_default(),
-        OutputFormat::Table => {
-            if sorted_tags.is_empty() {
-                "No tags found.".to_string()
-            } else {
-                let mut table = Table::new();
-                table
-                    .load_preset(UTF8_FULL)
-                    .apply_modifier(UTF8_ROUND_CORNERS)
-                    .set_header(vec![Cell::new("Tag")
-                        .add_attribute(Attribute::Bold)
-                        .fg(Color::Cyan)]);
-
-                for tag in sorted_tags {
-                    table.add_row(vec![tag]);
-                }
-                table.to_string()
+        OutputFormat::Csv => {
+            let mut wtr = csv::Writer::from_writer(vec![]);
+            #[derive(Serialize)]
+            struct TagCsv<'a> {
+                tag: &'a str,
             }
+            for tag in sorted_tags {
+                wtr.serialize(TagCsv { tag }).unwrap();
+            }
+            String::from_utf8(wtr.into_inner().unwrap()).unwrap()
+        }
+        OutputFormat::Simple | OutputFormat::Verbose => {
+            if sorted_tags.is_empty() {
+                return "No tags found.".to_string();
+            }
+            let mut table = Table::new();
+            table
+                .load_preset(UTF8_FULL)
+                .apply_modifier(UTF8_ROUND_CORNERS)
+                .set_header(vec![Cell::new("Tag")
+                    .add_attribute(Attribute::Bold)
+                    .fg(Color::Cyan)]);
+
+            for tag in sorted_tags {
+                table.add_row(vec![tag]);
+            }
+            table.to_string()
         }
     }
 }
 
-fn format_page_data(page_data: &[PageData], format: &OutputFormat, show_pages: bool) -> String {
+fn format_page_data(
+    page_data: &[PageData],
+    format: &OutputFormat,
+    show_pages: bool,
+    base_url: &str,
+) -> String {
     match format {
         OutputFormat::Json => {
             if show_pages {
@@ -207,7 +257,46 @@ fn format_page_data(page_data: &[PageData], format: &OutputFormat, show_pages: b
                 serde_json::to_string_pretty(&sorted).unwrap_or_default()
             }
         }
-        OutputFormat::Table => {
+        OutputFormat::Csv => {
+            let mut wtr = csv::Writer::from_writer(vec![]);
+            if show_pages {
+                #[derive(Serialize)]
+                struct PageDataCsv<'a> {
+                    id: &'a str,
+                    title: &'a str,
+                    space: &'a str,
+                    tags: String,
+                }
+
+                for page in page_data {
+                    wtr.serialize(PageDataCsv {
+                        id: &page.id,
+                        title: &page.title,
+                        space: &page.space,
+                        tags: page.tags.join(", "),
+                    })
+                    .unwrap();
+                }
+            } else {
+                let mut all_tags: HashSet<String> = HashSet::new();
+                for page in page_data {
+                    all_tags.extend(page.tags.iter().cloned());
+                }
+                let mut sorted: Vec<_> = all_tags.into_iter().collect();
+                sorted.sort();
+
+                #[derive(Serialize)]
+                struct TagCsv<'a> {
+                    tag: &'a str,
+                }
+
+                for tag in sorted {
+                    wtr.serialize(TagCsv { tag: &tag }).unwrap();
+                }
+            }
+            String::from_utf8(wtr.into_inner().unwrap()).unwrap()
+        }
+        OutputFormat::Simple | OutputFormat::Verbose => {
             if page_data.is_empty() {
                 return "No pages found.".to_string();
             }
@@ -216,18 +305,36 @@ fn format_page_data(page_data: &[PageData], format: &OutputFormat, show_pages: b
                 table
                     .load_preset(UTF8_FULL)
                     .apply_modifier(UTF8_ROUND_CORNERS)
-                    .set_content_arrangement(ContentArrangement::Dynamic)
-                    .set_header(vec![
-                        Cell::new("Title")
-                            .add_attribute(Attribute::Bold)
-                            .fg(Color::Cyan),
-                        Cell::new("Space")
-                            .add_attribute(Attribute::Bold)
-                            .fg(Color::Cyan),
-                        Cell::new("Tags")
-                            .add_attribute(Attribute::Bold)
-                            .fg(Color::Cyan),
-                    ]);
+                    .set_content_arrangement(ContentArrangement::Dynamic);
+
+                let width = terminal_size().map(|(Width(w), _)| w).unwrap_or(120);
+                table.set_width(width.saturating_sub(4));
+
+                table.set_header(vec![
+                    Cell::new("Title")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                    Cell::new("Space")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                    Cell::new("Tags")
+                        .add_attribute(Attribute::Bold)
+                        .fg(Color::Cyan),
+                ]);
+
+                use comfy_table::{ColumnConstraint::*, Width::*};
+                table
+                    .column_mut(0)
+                    .unwrap()
+                    .set_constraint(LowerBoundary(Fixed(40)));
+                table
+                    .column_mut(1)
+                    .unwrap()
+                    .set_constraint(LowerBoundary(Fixed(15)));
+                table
+                    .column_mut(2)
+                    .unwrap()
+                    .set_constraint(LowerBoundary(Fixed(20)));
 
                 for page in page_data {
                     let tags = if page.tags.is_empty() {
@@ -235,8 +342,19 @@ fn format_page_data(page_data: &[PageData], format: &OutputFormat, show_pages: b
                     } else {
                         page.tags.join(", ")
                     };
+
+                    let title_content = if format == &OutputFormat::Verbose {
+                        // Create a terminal hyperlink if in verbose mode
+                        format!(
+                            "\x1b]8;;{}/wiki/pages/viewpage.action?pageId={}\x1b\\{}\x1b]8;;\x1b\\",
+                            base_url, page.id, page.title
+                        )
+                    } else {
+                        page.title.clone()
+                    };
+
                     table.add_row(vec![
-                        Cell::new(&page.title),
+                        Cell::new(title_content),
                         Cell::new(&page.space),
                         Cell::new(tags),
                     ]);
@@ -279,7 +397,7 @@ mod tests {
     #[test]
     fn format_tags_only_table_empty() {
         let tags: HashSet<String> = HashSet::new();
-        let out = format_tags_only(&tags, &OutputFormat::Table);
+        let out = format_tags_only(&tags, &OutputFormat::Simple);
         assert_eq!(out.trim(), "No tags found.");
     }
 

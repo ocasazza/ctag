@@ -54,13 +54,26 @@ pub fn create_spinner(msg: &str) -> ProgressBar {
 
 // Formatters for results
 
-pub fn print_summary(
-    total: usize,
-    processed: usize,
-    skipped: usize,
-    success: usize,
-    failed: usize,
-) {
+pub fn print_summary(results: &crate::models::ProcessResults, format: crate::models::OutputFormat) {
+    match format {
+        crate::models::OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(results).unwrap());
+        }
+        crate::models::OutputFormat::Csv => {
+            let mut wtr = csv::Writer::from_writer(std::io::stdout());
+            wtr.serialize(results).unwrap();
+            wtr.flush().unwrap();
+        }
+        crate::models::OutputFormat::Verbose => {
+            print_summary_table(results);
+        }
+        crate::models::OutputFormat::Simple => {
+            print_summary_minimal(results.processed, results.success, results.failed);
+        }
+    }
+}
+
+fn print_summary_table(results: &crate::models::ProcessResults) {
     use comfy_table::modifiers::UTF8_ROUND_CORNERS;
     use comfy_table::presets::UTF8_FULL;
     use comfy_table::*;
@@ -81,36 +94,48 @@ pub fn print_summary(
 
     table.add_row(vec![
         Cell::new("Total Pages Found").add_attribute(Attribute::Bold),
-        Cell::new(total.to_string()).fg(Color::White),
+        Cell::new(results.total.to_string()).fg(Color::White),
     ]);
     table.add_row(vec![
         Cell::new("Processed").fg(Color::Blue),
-        Cell::new(processed.to_string()).fg(Color::Blue),
+        Cell::new(results.processed.to_string()).fg(Color::Blue),
     ]);
     table.add_row(vec![
         Cell::new("Skipped").fg(Color::Yellow),
-        Cell::new(skipped.to_string()).fg(Color::Yellow),
+        Cell::new(results.skipped.to_string()).fg(Color::Yellow),
     ]);
     table.add_row(vec![
         Cell::new("Successful").fg(Color::Green),
-        Cell::new(success.to_string()).fg(Color::Green),
+        Cell::new(results.success.to_string()).fg(Color::Green),
     ]);
     table.add_row(vec![
         Cell::new("Failed").fg(Color::Red),
-        Cell::new(failed.to_string()).fg(Color::Red),
+        Cell::new(results.failed.to_string()).fg(Color::Red),
     ]);
     eprintln!("\n{}", "Execution Summary".bold().bright_white());
     println!("{table}");
 }
 
+pub fn print_summary_minimal(processed: usize, success: usize, failed: usize) {
+    println!(
+        "\n{} {} | {} {} | {} {}",
+        "Processed:".bold(),
+        processed.to_string().cyan(),
+        "Success:".bold(),
+        success.to_string().green(),
+        "Failed:".bold(),
+        failed.to_string().red(),
+    );
+}
+
 pub fn print_header(title: &str) {
-    println!("\n{}", "=".repeat(title.len() + 4).dimmed());
-    println!("  {}", title.bold().bright_white());
-    println!("{}\n", "=".repeat(title.len() + 4).dimmed());
+    eprintln!("\n{}", "=".repeat(title.len() + 4).dimmed());
+    eprintln!("  {}", title.bold().bright_white());
+    eprintln!("{}\n", "=".repeat(title.len() + 4).dimmed());
 }
 
 pub fn print_page_action(action: &str, title: &str, space: &str) {
-    println!(
+    eprintln!(
         "{} {} {} {} {}",
         "→".bright_blue().bold(),
         action.bold(),
@@ -118,5 +143,5 @@ pub fn print_page_action(action: &str, title: &str, space: &str) {
         title.bright_white(),
         "\"".dimmed()
     );
-    println!("  {} {}", "in space".dimmed(), space.cyan());
+    eprintln!("  {} {}", "in space".dimmed(), space.cyan());
 }

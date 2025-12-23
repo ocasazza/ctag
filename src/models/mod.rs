@@ -1,9 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(clap::ValueEnum, Clone, Debug, Copy, PartialEq, Serialize, Deserialize)]
+pub enum OutputFormat {
+    Simple,
+    Verbose,
+    Json,
+    Csv,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResultItem {
     pub content: Option<Content>,
     pub title: Option<String>,
+    pub space: Option<Space>,
     #[serde(rename = "resultGlobalContainer")]
     pub result_global_container: Option<GlobalContainer>,
 }
@@ -15,6 +24,14 @@ pub struct Content {
     #[serde(rename = "type")]
     pub content_type: Option<String>,
     pub status: Option<String>,
+    pub space: Option<Space>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Space {
+    pub id: Option<i64>,
+    pub key: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +58,7 @@ pub struct LabelsResponse {
     pub results: Vec<Label>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessResults {
     pub total: usize,
     pub processed: usize,

@@ -26,6 +26,10 @@ impl ConfluenceClient {
         }
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     fn headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         let auth = format!("{}:{}", self.username, self.token);
@@ -150,6 +154,7 @@ impl ConfluenceClient {
                         let minimal = SearchResultItem {
                             title: c.title.clone(),
                             content: Some(c),
+                            space: None,
                             result_global_container: None, // We might lose this if not flattened
                         };
                         pages.push(minimal);

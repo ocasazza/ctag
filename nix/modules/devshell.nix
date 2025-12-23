@@ -19,6 +19,9 @@
           nixd # Nix language server
           bacon
           omnix
+          (writeShellScriptBin "ctag" ''
+            exec cargo run --quiet -- "$@"
+          '')
         ];
       };
     };

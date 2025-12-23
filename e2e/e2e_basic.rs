@@ -24,7 +24,11 @@ fn e2e_add_replace_remove_flow_on_new_page() -> Result<()> {
 
         // add the old tag
         let mut add_cmd = Command::cargo_bin("ctag")?;
-        add_cmd.arg("add").arg(&cql).arg(&cfg.old_tag);
+        add_cmd
+            .arg("--verbose")
+            .arg("add")
+            .arg(&cql)
+            .arg(&cfg.old_tag);
 
         add_cmd.assert().success().stderr(
             predicate::str::contains("Found").and(predicate::str::contains("matching pages")),
@@ -42,6 +46,7 @@ fn e2e_add_replace_remove_flow_on_new_page() -> Result<()> {
         // replace old -> new
         let mut replace_cmd = Command::cargo_bin("ctag")?;
         replace_cmd
+            .arg("--verbose")
             .arg("replace")
             .arg(&cql)
             .arg(format!("{}={}", &cfg.old_tag, &cfg.new_tag));
@@ -67,7 +72,11 @@ fn e2e_add_replace_remove_flow_on_new_page() -> Result<()> {
 
         // remove the new tag
         let mut remove_cmd = Command::cargo_bin("ctag")?;
-        remove_cmd.arg("remove").arg(&cql).arg(&cfg.new_tag);
+        remove_cmd
+            .arg("--verbose")
+            .arg("remove")
+            .arg(&cql)
+            .arg(&cfg.new_tag);
 
         remove_cmd.assert().success().stderr(
             predicate::str::contains("Found").and(predicate::str::contains("matching pages")),
