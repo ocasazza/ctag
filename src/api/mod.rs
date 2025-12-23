@@ -390,8 +390,10 @@ mod tests {
                     title: Some(format!("Page {}", id)),
                     content_type: Some("page".to_string()),
                     status: Some("current".to_string()),
+                    space: None,
                 }),
                 title: Some(format!("Page {}", id)),
+                space: None,
                 result_global_container: Some(GlobalContainer {
                     title: Some("SPACE".to_string()),
                 }),
