@@ -3,5 +3,5 @@
 /result-lib
 .direnv
 .env
-
-/.pre-commit-config.yaml
+.vscode
+.pre-commit-config.yaml
