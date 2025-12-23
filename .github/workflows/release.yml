@@ -1,0 +1,55 @@
+name: Release Build
+
+on:
+  push:
+    branches:
+      - 'release-*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-linux
+          # macOS Apple Silicon (M1/M2)
+          - os: macos-14
+            target: aarch64-darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v30
+        with:
+          nix_conf: experimental-features = nix-command flakes
+
+      - name: Build Binary
+        run: nix build -L
+
+      - name: Rename Binary
+        run: |
+          mkdir -p artifacts
+          # Nix output is a symlink, copy the binary to a regular file with target suffix
+          cp result/bin/ctag artifacts/ctag-${{ matrix.target }}
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/release-')
+        with:
+          # tag_name will be the branch name (e.g., release-v0.1.0)
+          tag_name: ${{ github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Release ${{ github.ref_name }}
+          files: artifacts/ctag-${{ matrix.target }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

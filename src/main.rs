@@ -62,3 +62,23 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn verify_cli_version_matches_cargo() {
+        let cmd = Cli::command();
+        let version = cmd
+            .get_version()
+            .expect("Version should be set on CLI command");
+        let cargo_version = env!("CARGO_PKG_VERSION");
+        assert_eq!(
+            version, cargo_version,
+            "CLI version ({}) does not match Cargo.toml version ({})",
+            version, cargo_version
+        );
+    }
+}

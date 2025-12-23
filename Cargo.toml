@@ -23,3 +23,11 @@ urlencoding = "2.1"
 [dev-dependencies]
 assert_cmd = "2.0"
 predicates = "3.1"
+
+[[test]]
+name = "e2e_basic"
+path = "e2e/e2e_basic.rs"
+
+[[test]]
+name = "e2e_bulk"
+path = "e2e/e2e_bulk.rs"
