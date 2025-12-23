@@ -67,27 +67,47 @@ struct SandboxConfig {
 }
 
 impl SandboxConfig {
-    fn from_env() -> Result<Self> {
+    fn from_env() -> Result<Option<Self>> {
         // Load .env first (if present) to support standard local dev
         dotenvy::dotenv().ok();
         // Load .sandbox.env if present, overriding .env; ignore errors so CI etc. can opt out.
         let _ = dotenvy::from_filename(".sandbox.env");
 
-        let base_url = env::var("ATLASSIAN_URL")
-            .context("ATLASSIAN_URL must be set in .sandbox.env for e2e tests")?;
-        let username = env::var("ATLASSIAN_USERNAME")
-            .context("ATLASSIAN_USERNAME must be set in .sandbox.env for e2e tests")?;
-        let token = env::var("ATLASSIAN_TOKEN")
-            .context("ATLASSIAN_TOKEN must be set in .sandbox.env for e2e tests")?;
-        let space_key = env::var("SANDBOX_SPACE_KEY")
-            .context("SANDBOX_SPACE_KEY must be set in .sandbox.env for e2e tests")?;
-        let parent_page_id = env::var("SANDBOX_PARENT_PAGE_ID").ok();
-        let old_tag = env::var("SANDBOX_OLD_TAG")
-            .context("SANDBOX_OLD_TAG must be set in .sandbox.env for e2e tests")?;
-        let new_tag = env::var("SANDBOX_NEW_TAG")
-            .context("SANDBOX_NEW_TAG must be set in .sandbox.env for e2e tests")?;
+        // Helper to check var and return None if missing
+        let get_var = |key| -> Option<String> {
+            match env::var(key) {
+                Ok(v) => Some(v),
+                Err(_) => None,
+            }
+        };
 
-        Ok(SandboxConfig {
+        let base_url = match get_var("ATLASSIAN_URL") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let username = match get_var("ATLASSIAN_USERNAME") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let token = match get_var("ATLASSIAN_TOKEN") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let space_key = match get_var("SANDBOX_SPACE_KEY") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let parent_page_id = get_var("SANDBOX_PARENT_PAGE_ID");
+        let old_tag = match get_var("SANDBOX_OLD_TAG") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let new_tag = match get_var("SANDBOX_NEW_TAG") {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+
+        Ok(Some(SandboxConfig {
             base_url,
             username,
             token,
@@ -95,7 +115,7 @@ impl SandboxConfig {
             parent_page_id,
             old_tag,
             new_tag,
-        })
+        }))
     }
 }
 
@@ -268,7 +288,13 @@ fn with_test_page<F>(f: F) -> Result<()>
 where
     F: FnOnce(&SandboxConfig, &str) -> Result<()>,
 {
-    let cfg = SandboxConfig::from_env()?;
+    let cfg = match SandboxConfig::from_env()? {
+        Some(c) => c,
+        None => {
+            println!("Skipping E2E test: Missing environment variables.");
+            return Ok(());
+        }
+    };
     let client = TestConfluenceClient::new(&cfg)?;
 
     // Create a new test page

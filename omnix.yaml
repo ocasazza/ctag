@@ -1,0 +1,21 @@
+# omnix.yaml
+# Configuration for `om` (https://github.com/juspay/omnix)
+
+ci:
+  - name: Flake Check
+    command: nix flake check --accept-flake-config
+
+  - name: Rust Check
+    command: nix develop --accept-flake-config --command cargo check --verbose
+
+  - name: Rust Fmt
+    command: nix develop --accept-flake-config --command cargo fmt --all -- --check
+
+  - name: Rust Clippy
+    command: nix develop --accept-flake-config --command cargo clippy -- -D warnings
+
+  - name: Unit Tests
+    command: nix develop --accept-flake-config --command cargo test
+
+  - name: E2E Tests
+    command: nix develop --accept-flake-config --command cargo test --test e2e_sandbox -- --ignored
