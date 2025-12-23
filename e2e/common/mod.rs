@@ -187,7 +187,7 @@ pub fn cleanup_labels_for_page(cql: &str, old_tag: &str, new_tag: &str) -> Resul
         .arg(cql)
         .arg(old_tag)
         .arg(new_tag)
-        .arg("--no-progress")
+        .arg(new_tag)
         .output()
         .context("failed to run cleanup `ctag remove` command")?;
 
@@ -254,6 +254,9 @@ where
 
     // CQL that targets only this page
     let cql = format!("id = {}", page_id);
+
+    // Wait for Confluence search index to catch up
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     // Ensure labels are clean before running the test
     let _ = cleanup_labels_for_page(&cql, &cfg.old_tag, &cfg.new_tag);
