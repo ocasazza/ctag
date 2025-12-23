@@ -256,17 +256,21 @@ where
     let cql = format!("id = {}", page_id);
 
     // Wait for Confluence search index to catch up
-    std::thread::sleep(std::time::Duration::from_secs(5));
+    std::thread::sleep(std::time::Duration::from_secs(15));
 
     // Ensure labels are clean before running the test
     let _ = cleanup_labels_for_page(&cql, &cfg.old_tag, &cfg.new_tag);
 
-    // Run the actual test logic
-    let result = f(&cfg, &page_id);
+    // Run the actual test logic, catching any panic to ensure cleanup happens
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&cfg, &page_id)));
 
     // Best-effort cleanup: remove labels and delete the page
     let _ = cleanup_labels_for_page(&cql, &cfg.old_tag, &cfg.new_tag);
     let _ = client.delete_page(&page_id);
 
-    result
+    // If the test panicked, resume unwinding; otherwise return the Result
+    match result {
+        Ok(r) => r,
+        Err(e) => std::panic::resume_unwind(e),
+    }
 }
