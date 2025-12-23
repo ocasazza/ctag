@@ -35,6 +35,8 @@ pub(crate) struct JsonCommand {
     #[serde(default)]
     pub interactive: bool,
     pub cql_exclude: Option<String>,
+    #[serde(default)]
+    pub regex: bool,
 }
 
 pub fn run(
@@ -141,6 +143,7 @@ pub(crate) fn process_single_command(
                 interactive: command.interactive,
                 abort_key: abort_key.to_string(),
                 cql_exclude: command.cql_exclude.clone(),
+                regex: command.regex,
             };
             crate::commands::remove::run(remove_args, client, dry_run, progress, format)
         }
@@ -157,6 +160,7 @@ pub(crate) fn process_single_command(
                 interactive: command.interactive,
                 abort_key: abort_key.to_string(),
                 cql_exclude: command.cql_exclude.clone(),
+                regex: command.regex,
             };
             crate::commands::replace::run(replace_args, client, dry_run, progress, format)
         }

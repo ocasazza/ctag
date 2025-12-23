@@ -340,6 +340,7 @@ dependencies = [
  "indicatif",
  "log",
  "predicates",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

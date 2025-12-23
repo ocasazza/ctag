@@ -362,6 +362,30 @@ pub fn sanitize_text(text: &str) -> String {
         .collect()
 }
 
+/// Filter tags that match any of the provided regexes
+pub fn filter_tags_by_regex(tags: Vec<String>, regexes: &[regex::Regex]) -> Vec<String> {
+    tags.into_iter()
+        .filter(|tag| regexes.iter().any(|re| re.is_match(tag)))
+        .collect()
+}
+
+/// Compute a mapping of old tags to new tags based on regex matches
+pub fn compute_replacements_by_regex(
+    tags: Vec<String>,
+    regex_pairs: &[(regex::Regex, String)],
+) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for tag in tags {
+        for (re, new_tag) in regex_pairs {
+            if re.is_match(&tag) {
+                map.insert(tag, new_tag.clone());
+                break;
+            }
+        }
+    }
+    map
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -379,6 +403,76 @@ mod tests {
         assert!(output.contains('\t'));
         assert!(output.contains("Hello"));
         assert!(output.contains("World"));
+    }
+
+    #[test]
+    fn filter_tags_by_regex_works() {
+        let tags = vec![
+            "test-1".to_string(),
+            "test-2".to_string(),
+            "other".to_string(),
+            "TEST-3".to_string(),
+        ];
+        // Test multiple regexes and case sensitivity
+        let regexes = vec![
+            regex::Regex::new("test-.*").unwrap(),
+            regex::Regex::new("^other$").unwrap(),
+        ];
+        let filtered = filter_tags_by_regex(tags, &regexes);
+        assert_eq!(filtered.len(), 3);
+        assert!(filtered.contains(&"test-1".to_string()));
+        assert!(filtered.contains(&"test-2".to_string()));
+        assert!(filtered.contains(&"other".to_string()));
+        assert!(!filtered.contains(&"TEST-3".to_string())); // Case sensitive
+    }
+
+    #[test]
+    fn filter_tags_by_regex_empty() {
+        let tags = vec!["a".into(), "b".into()];
+        let regexes = vec![regex::Regex::new("z").unwrap()];
+        let filtered = filter_tags_by_regex(tags, &regexes);
+        assert!(filtered.is_empty());
+    }
+
+    #[test]
+    fn compute_replacements_by_regex_works() {
+        let tags = vec![
+            "id-123".to_string(),
+            "id-456".to_string(),
+            "other".to_string(),
+            "special-1".to_string(),
+        ];
+        let regex_pairs = vec![
+            (
+                regex::Regex::new("id-.*").unwrap(),
+                "matched-id".to_string(),
+            ),
+            (
+                regex::Regex::new("special-.*").unwrap(),
+                "matched-special".to_string(),
+            ),
+        ];
+        let replacements = compute_replacements_by_regex(tags, &regex_pairs);
+        assert_eq!(replacements.len(), 3);
+        assert_eq!(replacements.get("id-123"), Some(&"matched-id".to_string()));
+        assert_eq!(replacements.get("id-456"), Some(&"matched-id".to_string()));
+        assert_eq!(
+            replacements.get("special-1"),
+            Some(&"matched-special".to_string())
+        );
+        assert!(!replacements.contains_key("other"));
+    }
+
+    #[test]
+    fn compute_replacements_by_regex_priority() {
+        let tags = vec!["match-both".to_string()];
+        // First match wins
+        let regex_pairs = vec![
+            (regex::Regex::new("match-.*").unwrap(), "first".to_string()),
+            (regex::Regex::new(".*-both").unwrap(), "second".to_string()),
+        ];
+        let replacements = compute_replacements_by_regex(tags, &regex_pairs);
+        assert_eq!(replacements.get("match-both"), Some(&"first".to_string()));
     }
 
     #[test]

@@ -26,6 +26,10 @@ pub struct ReplaceArgs {
     /// CQL expression to match pages that should be excluded
     #[arg(long)]
     pub cql_exclude: Option<String>,
+
+    /// Use regex to match tags
+    #[arg(long)]
+    pub regex: bool,
 }
 
 /// Parse CLI tag pairs like ["old=new", "foo=bar"] into a mapping.
@@ -73,6 +77,20 @@ pub fn run(
 
     // Parse tag pairs
     let tag_mapping = parse_tag_pairs(&args.tag_pairs)?;
+
+    let compiled_regexes = if args.regex {
+        let mut res = Vec::new();
+        for (old, new) in &tag_mapping {
+            res.push((
+                regex::Regex::new(old)
+                    .map_err(|e| anyhow::anyhow!("Invalid regex '{}': {}", old, e))?,
+                new.clone(),
+            ));
+        }
+        Some(res)
+    } else {
+        None
+    };
 
     // Get matching pages
     let spinner = if (verbose || !show_progress) && !is_structured {
@@ -129,14 +147,40 @@ pub fn run(
     if dry_run {
         ui::print_dry_run("No changes will be made.");
         for page in &pages {
+            let page_id = match &page.content {
+                Some(content) => match &content.id {
+                    Some(id) => id,
+                    None => continue,
+                },
+                None => continue,
+            };
+
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page
                 .result_global_container
                 .as_ref()
                 .and_then(|c| c.title.as_deref())
                 .unwrap_or("Unknown");
-            let old_tags: Vec<_> = tag_mapping.keys().collect();
-            let new_tags: Vec<_> = tag_mapping.values().collect();
+
+            let replacements = if let Some(regex_pairs) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id)?;
+                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+            } else {
+                tag_mapping.clone()
+            };
+
+            if replacements.is_empty() && args.regex {
+                if verbose {
+                    ui::print_info(&format!(
+                        "Skipping page '{}' - no tags match regex",
+                        sanitize_text(title)
+                    ));
+                }
+                continue;
+            }
+
+            let old_tags: Vec<_> = replacements.keys().collect();
+            let new_tags: Vec<_> = replacements.values().collect();
             ui::print_page_action("Would replace tags", &sanitize_text(title), space);
             ui::print_substep(&format!("From: {:?} To: {:?}", old_tags, new_tags));
         }
@@ -173,6 +217,21 @@ pub fn run(
             .and_then(|c| c.title.as_deref())
             .unwrap_or("Unknown");
 
+        let replacements = if let Some(regex_pairs) = &compiled_regexes {
+            let current_tags = client.get_page_tags(page_id)?;
+            crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+        } else {
+            tag_mapping.clone()
+        };
+
+        if replacements.is_empty() && args.regex {
+            results.skipped += 1;
+            if let Some(pb) = &progress {
+                pb.inc(1);
+            }
+            continue;
+        }
+
         // Interactive confirmation
         if args.interactive {
             if let Some(pb) = &progress {
@@ -183,8 +242,8 @@ pub fn run(
                 ui::print_page_action("Replacing tags on", &sanitize_text(title), space);
             }
 
-            let old_tags: Vec<_> = tag_mapping.keys().collect();
-            let new_tags: Vec<_> = tag_mapping.values().collect();
+            let old_tags: Vec<_> = replacements.keys().collect();
+            let new_tags: Vec<_> = replacements.values().collect();
             let prompt = format!(
                 "Replace tags {:?} with {:?}? (Enter '{}' to abort)",
                 old_tags, new_tags, args.abort_key
@@ -213,7 +272,7 @@ pub fn run(
         }
 
         // Perform the action
-        let success = client.replace_tags(page_id, &tag_mapping);
+        let success = client.replace_tags(page_id, &replacements);
         results.processed += 1;
 
         if success {

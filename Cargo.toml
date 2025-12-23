@@ -24,6 +24,7 @@ fastrand = "2.3"
 comfy-table = { version = "7.1", features = ["tty", "custom_styling"] }
 terminal_size = "0.3"
 csv = "1.3"
+regex = "1.12.2"
 
 [dev-dependencies]
 assert_cmd = "2.0"
@@ -40,3 +41,7 @@ path = "e2e/e2e_bulk.rs"
 [[test]]
 name = "e2e_advanced"
 path = "e2e/e2e_advanced.rs"
+
+[[test]]
+name = "e2e_regex"
+path = "e2e/e2e_regex.rs"

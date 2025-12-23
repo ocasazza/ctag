@@ -25,6 +25,10 @@ pub struct RemoveArgs {
     /// CQL expression to match pages that should be excluded
     #[arg(long)]
     pub cql_exclude: Option<String>,
+
+    /// Use regex to match tags
+    #[arg(long)]
+    pub regex: bool,
 }
 
 pub fn run(
@@ -37,6 +41,19 @@ pub fn run(
     let verbose = format == crate::models::OutputFormat::Verbose;
     let is_structured =
         format == crate::models::OutputFormat::Json || format == crate::models::OutputFormat::Csv;
+
+    let compiled_regexes = if args.regex {
+        let mut res = Vec::new();
+        for t in &args.tags {
+            res.push(
+                regex::Regex::new(t)
+                    .map_err(|e| anyhow::anyhow!("Invalid regex '{}': {}", t, e))?,
+            );
+        }
+        Some(res)
+    } else {
+        None
+    };
 
     if verbose {
         ui::print_header("REMOVE TAGS");
@@ -103,14 +120,40 @@ pub fn run(
     if dry_run {
         ui::print_dry_run("No changes will be made.");
         for page in &pages {
+            let page_id = match &page.content {
+                Some(content) => match &content.id {
+                    Some(id) => id,
+                    None => continue,
+                },
+                None => continue,
+            };
+
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page
                 .result_global_container
                 .as_ref()
                 .and_then(|c| c.title.as_deref())
                 .unwrap_or("Unknown");
+
+            let tags_to_remove = if let Some(regexes) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id)?;
+                crate::api::filter_tags_by_regex(current_tags, regexes)
+            } else {
+                args.tags.clone()
+            };
+
+            if tags_to_remove.is_empty() && args.regex {
+                if verbose {
+                    ui::print_info(&format!(
+                        "Skipping page '{}' - no tags match regex",
+                        sanitize_text(title)
+                    ));
+                }
+                continue;
+            }
+
             ui::print_page_action("Would remove tags", &sanitize_text(title), space);
-            ui::print_substep(&format!("Tags: {:?}", args.tags));
+            ui::print_substep(&format!("Tags: {:?}", tags_to_remove));
         }
         return Ok(());
     }
@@ -145,6 +188,21 @@ pub fn run(
             .and_then(|c| c.title.as_deref())
             .unwrap_or("Unknown");
 
+        let tags_to_remove = if let Some(regexes) = &compiled_regexes {
+            let current_tags = client.get_page_tags(page_id)?;
+            crate::api::filter_tags_by_regex(current_tags, regexes)
+        } else {
+            args.tags.clone()
+        };
+
+        if tags_to_remove.is_empty() && args.regex {
+            results.skipped += 1;
+            if let Some(pb) = &progress {
+                pb.inc(1);
+            }
+            continue;
+        }
+
         // Interactive confirmation
         if args.interactive {
             if let Some(pb) = &progress {
@@ -157,7 +215,7 @@ pub fn run(
 
             let prompt = format!(
                 "Remove tags {:?}? (Enter '{}' to abort)",
-                args.tags, args.abort_key
+                tags_to_remove, args.abort_key
             );
 
             let confirmed = if let Some(pb) = &progress {
@@ -183,7 +241,7 @@ pub fn run(
         }
 
         // Perform the action
-        let success = client.remove_tags(page_id, &args.tags);
+        let success = client.remove_tags(page_id, &tags_to_remove);
         results.processed += 1;
 
         if success {

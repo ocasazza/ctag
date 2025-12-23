@@ -18,4 +18,4 @@ ci:
     command: nix develop --accept-flake-config --command cargo test
 
   - name: E2E Tests
-    command: nix develop --accept-flake-config --command cargo test --test e2e_basic --test e2e_bulk -- --ignored
+    command: nix develop --accept-flake-config --command cargo test --test e2e_basic --test e2e_bulk --test e2e_regex -- --ignored
