@@ -13,7 +13,8 @@
     }:
     {
       rust-project.crates."ctag".crane.args = {
-        # No special buildInputs needed for this project
+        buildInputs = [ pkgs.openssl ];
+        nativeBuildInputs = [ pkgs.pkg-config ];
       };
       packages.default = self'.packages.ctag;
     };
