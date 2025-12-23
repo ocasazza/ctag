@@ -333,6 +333,7 @@ mod tests {
             SearchResultItem {
                 content: Some(Content {
                     id: Some(id.to_string()),
+                    title: Some(format!("Page {}", id)),
                     content_type: Some("page".to_string()),
                     status: Some("current".to_string()),
                 }),
