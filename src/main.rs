@@ -23,7 +23,6 @@ struct Cli {
     progress: bool,
 
     /// Preview changes without making any modifications
-    /// Preview changes without making any modifications
     #[arg(long, global = true)]
     dry_run: bool,
 
