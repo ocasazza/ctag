@@ -34,27 +34,29 @@ pub fn run(
     show_progress: bool,
 ) -> Result<()> {
     // Get matching pages
-    println!("Finding pages matching: {}", args.cql_expression);
+    eprintln!("Finding pages matching: {}", args.cql_expression);
+    // TODO: This really needs to pagenate and get all results
+    // ... it might be good to put rate-limiting and retry logic within this logic as well
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
-
     if pages.is_empty() {
-        println!("No pages found matching the CQL expression.");
+        eprintln!("No pages found matching the CQL expression.");
         if dry_run {
-            println!("DRY RUN: No changes will be made.");
+            eprintln!("DRY RUN: No changes will be made.");
         }
         return Ok(());
     }
 
-    println!("Found {} matching pages.", pages.len());
+    eprintln!("Found {} matching pages.", pages.len());
 
     // Apply exclusion if specified
+    // TODO: remove exclusion filter from ctag entirely, other commands need it removed too
     if let Some(cql_exclude) = &args.cql_exclude {
-        println!("Finding pages to exclude: {}", cql_exclude);
+        eprintln!("Finding pages to exclude: {}", cql_exclude);
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            println!(
+            eprintln!(
                 "Excluded {} pages. {} pages remaining.",
                 original_count - pages.len(),
                 pages.len()
@@ -63,7 +65,7 @@ pub fn run(
     }
 
     if dry_run {
-        println!("DRY RUN: No changes will be made.");
+        eprintln!("DRY RUN: No changes will be made.");
         for page in &pages {
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page
@@ -71,7 +73,7 @@ pub fn run(
                 .as_ref()
                 .and_then(|c| c.title.as_deref())
                 .unwrap_or("Unknown");
-            println!(
+            eprintln!(
                 "Would remove tags {:?} from '{}' (Space: {})",
                 args.tags,
                 sanitize_text(title),
@@ -167,12 +169,12 @@ pub fn run(
     }
 
     // Display results
-    println!("\nResults:");
-    println!("  Total pages: {}", results.total);
-    println!("  Processed: {}", results.processed);
-    println!("  Skipped: {}", results.skipped);
-    println!("  Successful: {}", results.success);
-    println!("  Failed: {}", results.failed);
+    eprintln!("\nResults:");
+    eprintln!("  Total pages: {}", results.total);
+    eprintln!("  Processed: {}", results.processed);
+    eprintln!("  Skipped: {}", results.skipped);
+    eprintln!("  Successful: {}", results.success);
+    eprintln!("  Failed: {}", results.failed);
 
     Ok(())
 }

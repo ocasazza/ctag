@@ -68,32 +68,36 @@ impl ConfluenceClient {
             let error_text = response.text().unwrap_or_default();
             anyhow::bail!("CQL query failed with status {}: {}", status, error_text);
         }
-
         let cql_response: CqlResponse = response.json().context("Failed to parse CQL response")?;
-
         let mut pages = Vec::new();
         for item in cql_response.results {
             match serde_json::from_value::<SearchResultItem>(item.clone()) {
-                Ok(page) => pages.push(page),
+                Ok(mut page) => {
+                    // If content is missing, try to deserialize the item itself as Content.
+                    // This handles endpoints that return flat Content objects (like content/search).
+                    if page.content.is_none() {
+                        if let Ok(c) =
+                            serde_json::from_value::<crate::models::Content>(item.clone())
+                        {
+                            page.content = Some(c);
+                        }
+                    }
+                    pages.push(page);
+                }
                 Err(e) => {
                     warn!("Failed to parse search result item: {}", e);
-                    // Try minimal parsing
-                    if let Some(obj) = item.as_object() {
+                    // Try minimal parsing or constructing from flat content
+                    if let Ok(c) = serde_json::from_value::<crate::models::Content>(item.clone()) {
                         let minimal = SearchResultItem {
-                            content: obj
-                                .get("content")
-                                .and_then(|c| serde_json::from_value(c.clone()).ok()),
-                            title: obj.get("title").and_then(|t| t.as_str()).map(String::from),
-                            result_global_container: obj
-                                .get("resultGlobalContainer")
-                                .and_then(|r| serde_json::from_value(r.clone()).ok()),
+                            title: c.title.clone(),
+                            content: Some(c),
+                            result_global_container: None, // We might lose this if not flattened
                         };
                         pages.push(minimal);
                     }
                 }
             }
         }
-
         info!("CQL query returned {} results", pages.len());
         Ok(pages)
     }

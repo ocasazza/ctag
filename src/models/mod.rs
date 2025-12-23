@@ -11,6 +11,7 @@ pub struct SearchResultItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Content {
     pub id: Option<String>,
+    pub title: Option<String>,
     #[serde(rename = "type")]
     pub content_type: Option<String>,
     pub status: Option<String>,

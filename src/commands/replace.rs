@@ -66,27 +66,27 @@ pub fn run(
     let tag_mapping = parse_tag_pairs(&args.tag_pairs)?;
 
     // Get matching pages
-    println!("Finding pages matching: {}", args.cql_expression);
+    eprintln!("Finding pages matching: {}", args.cql_expression);
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
 
     if pages.is_empty() {
-        println!("No pages found matching the CQL expression.");
+        eprintln!("No pages found matching the CQL expression.");
         if dry_run {
-            println!("DRY RUN: No changes will be made.");
+            eprintln!("DRY RUN: No changes will be made.");
         }
         return Ok(());
     }
 
-    println!("Found {} matching pages.", pages.len());
+    eprintln!("Found {} matching pages.", pages.len());
 
     // Apply exclusion if specified
     if let Some(cql_exclude) = &args.cql_exclude {
-        println!("Finding pages to exclude: {}", cql_exclude);
+        eprintln!("Finding pages to exclude: {}", cql_exclude);
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            println!(
+            eprintln!(
                 "Excluded {} pages. {} pages remaining.",
                 original_count - pages.len(),
                 pages.len()
@@ -95,7 +95,7 @@ pub fn run(
     }
 
     if dry_run {
-        println!("DRY RUN: No changes will be made.");
+        eprintln!("DRY RUN: No changes will be made.");
         for page in &pages {
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page
@@ -105,7 +105,7 @@ pub fn run(
                 .unwrap_or("Unknown");
             let old_tags: Vec<_> = tag_mapping.keys().collect();
             let new_tags: Vec<_> = tag_mapping.values().collect();
-            println!(
+            eprintln!(
                 "Would replace tags {:?} with {:?} on '{}' (Space: {})",
                 old_tags,
                 new_tags,
@@ -204,12 +204,12 @@ pub fn run(
     }
 
     // Display results
-    println!("\nResults:");
-    println!("  Total pages: {}", results.total);
-    println!("  Processed: {}", results.processed);
-    println!("  Skipped: {}", results.skipped);
-    println!("  Successful: {}", results.success);
-    println!("  Failed: {}", results.failed);
+    eprintln!("\nResults:");
+    eprintln!("  Total pages: {}", results.total);
+    eprintln!("  Processed: {}", results.processed);
+    eprintln!("  Skipped: {}", results.skipped);
+    eprintln!("  Successful: {}", results.success);
+    eprintln!("  Failed: {}", results.failed);
 
     Ok(())
 }

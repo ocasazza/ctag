@@ -60,24 +60,24 @@ pub fn run(
     _show_progress: bool,
 ) -> Result<()> {
     // Get matching pages
-    println!("Finding pages matching: {}", args.cql_expression);
+    eprintln!("Finding pages matching: {}", args.cql_expression);
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
-
     if pages.is_empty() {
-        println!("No pages found matching the CQL expression.");
+        match args.format {
+            OutputFormat::Json => println!("[]"),
+            OutputFormat::Table => eprintln!("No pages found matching the CQL expression."),
+        }
         return Ok(());
     }
-
-    println!("Found {} matching pages.", pages.len());
-
+    eprintln!("Found {} matching pages.", pages.len());
     // Apply exclusion if specified
     if let Some(cql_exclude) = &args.cql_exclude {
-        println!("Finding pages to exclude: {}", cql_exclude);
+        eprintln!("Finding pages to exclude: {}", cql_exclude);
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            println!(
+            eprintln!(
                 "Excluded {} pages. {} pages remaining.",
                 original_count - pages.len(),
                 pages.len()
@@ -86,10 +86,9 @@ pub fn run(
     }
 
     // Collect page data with tags
-    println!("Retrieving tags for pages...");
+    eprintln!("Retrieving tags for pages...");
     let mut page_data = Vec::new();
     let mut all_tags = HashSet::new();
-
     for page in &pages {
         let page_id = match &page.content {
             Some(content) => match &content.id {
@@ -104,7 +103,6 @@ pub fn run(
                 continue;
             }
         };
-
         let title = sanitize_text(page.title.as_deref().unwrap_or("Unknown"));
         let space = page
             .result_global_container
@@ -115,7 +113,6 @@ pub fn run(
 
         let tags = client.get_page_tags(&page_id).unwrap_or_default();
         all_tags.extend(tags.iter().cloned());
-
         page_data.push(PageData {
             id: page_id,
             title,
@@ -123,35 +120,30 @@ pub fn run(
             tags,
         });
     }
-
     // Generate output
     let output_content = if args.tags_only {
         format_tags_only(&all_tags, &args.format)
     } else {
         format_page_data(&page_data, &args.format, args.show_pages)
     };
-
     // Output results
     if let Some(output_file) = &args.output_file {
         let mut file = File::create(output_file)?;
         file.write_all(output_content.as_bytes())?;
-        println!("Results saved to {}", output_file);
+        eprintln!("Results saved to {}", output_file);
     } else {
         println!("{}", output_content);
     }
-
     // Display summary
-    println!("\nSummary:");
-    println!("  Total pages processed: {}", page_data.len());
-    println!("  Unique tags found: {}", all_tags.len());
-
+    eprintln!("\nSummary:");
+    eprintln!("  Total pages processed: {}", page_data.len());
+    eprintln!("  Unique tags found: {}", all_tags.len());
     Ok(())
 }
 
 fn format_tags_only(tags: &HashSet<String>, format: &OutputFormat) -> String {
     let mut sorted_tags: Vec<_> = tags.iter().collect();
     sorted_tags.sort();
-
     match format {
         OutputFormat::Json => serde_json::to_string_pretty(&sorted_tags).unwrap_or_default(),
         OutputFormat::Table => {
@@ -189,16 +181,13 @@ fn format_page_data(page_data: &[PageData], format: &OutputFormat, show_pages: b
             if page_data.is_empty() {
                 return "No pages found.".to_string();
             }
-
             let mut output = String::new();
-
             if show_pages {
                 // Calculate column widths
                 let max_title_len = page_data.iter().map(|p| p.title.len()).max().unwrap_or(0);
                 let max_space_len = page_data.iter().map(|p| p.space.len()).max().unwrap_or(0);
                 let title_width = max_title_len.min(50);
                 let space_width = max_space_len.min(20);
-
                 // Header
                 output.push_str(&format!(
                     "{:<title_width$} {:<space_width$} Tags\n",
@@ -280,12 +269,10 @@ mod tests {
         let mut tags: HashSet<String> = HashSet::new();
         tags.insert("b".to_string());
         tags.insert("a".to_string());
-
         let out = format_tags_only(&tags, &OutputFormat::Json);
         let parsed: Vec<String> = serde_json::from_str(&out).unwrap();
         assert_eq!(parsed, vec!["a".to_string(), "b".to_string()]);
     }
-
     #[test]
     fn format_page_data_json_unique_tags_when_not_showing_pages() {
         let page_data = vec![
@@ -302,10 +289,8 @@ mod tests {
                 tags: vec!["y".into(), "z".into()],
             },
         ];
-
         let out = format_page_data(&page_data, &OutputFormat::Json, false);
         let tags: Vec<String> = serde_json::from_str(&out).unwrap();
-
         assert_eq!(
             tags,
             vec!["x".to_string(), "y".to_string(), "z".to_string()]

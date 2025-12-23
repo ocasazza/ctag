@@ -47,11 +47,11 @@ impl SandboxConfig {
         };
         let parent_page_id = get_var("SANDBOX_PARENT_PAGE_ID");
         let old_tag = match get_var("SANDBOX_OLD_TAG") {
-            Some(v) => v,
+            Some(v) => v.to_lowercase(),
             None => return Ok(None),
         };
         let new_tag = match get_var("SANDBOX_NEW_TAG") {
-            Some(v) => v,
+            Some(v) => v.to_lowercase(),
             None => return Ok(None),
         };
 
