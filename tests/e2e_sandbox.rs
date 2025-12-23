@@ -5,12 +5,13 @@
 //! of the default `cargo test` invocation. To run them, you must:
 //!
 //! 1. Create a `.sandbox.env` file in the project root with at least:
-//!    - `ATLASSIAN_URL`       - Base URL for your Confluence Cloud (e.g. https://your-instance.atlassian.net)
-//!    - `ATLASSIAN_USERNAME`  - Email/username for API auth
-//!    - `ATLASSIAN_TOKEN`     - API token
-//!    - `SANDBOX_SPACE_KEY`   - Space key where temporary test pages may be created
-//!    - `SANDBOX_OLD_TAG`     - A label used as the "old" tag in replace tests
-//!    - `SANDBOX_NEW_TAG`     - A label used as the "new" tag in replace tests
+//!    - `ATLASSIAN_URL`          - Base URL for your Confluence Cloud (e.g. https://your-instance.atlassian.net)
+//!    - `ATLASSIAN_USERNAME`     - Email/username for API auth
+//!    - `ATLASSIAN_TOKEN`        - API token
+//!    - `SANDBOX_SPACE_KEY`      - Space key where temporary test pages may be created
+//!    - `SANDBOX_PARENT_PAGE_ID` - (Optional) ID of a page under which test pages will be created
+//!    - `SANDBOX_OLD_TAG`        - A label used as the "old" tag in replace tests
+//!    - `SANDBOX_NEW_TAG`        - A label used as the "new" tag in replace tests
 //!
 //!    Example `.sandbox.env`:
 //!    ```env
@@ -18,6 +19,7 @@
 //!    ATLASSIAN_USERNAME=you@example.com
 //!    ATLASSIAN_TOKEN=your-api-token
 //!    SANDBOX_SPACE_KEY=SANDBOX
+//!    SANDBOX_PARENT_PAGE_ID=123456789
 //!    SANDBOX_OLD_TAG=ctag-e2e-old
 //!    SANDBOX_NEW_TAG=ctag-e2e-new
 //!    ```
@@ -32,6 +34,7 @@
 //! Each test uses `with_test_page`, which:
 //! - Loads `.sandbox.env`
 //! - Creates a temporary Confluence page in `SANDBOX_SPACE_KEY` via the REST API
+//!   (optionally under `SANDBOX_PARENT_PAGE_ID`)
 //! - Runs `ctag` commands against that specific page using a CQL like `id = <page_id>`
 //! - Removes test labels from the page using the `ctag remove` CLI command
 //! - Deletes the test page via the REST API at the end (best-effort)
@@ -48,7 +51,9 @@ use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::json;
 use std::env;
-use std::process::Command;
+use std::fs;
+use std::io::Write;
+use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 struct SandboxConfig {
@@ -56,13 +61,16 @@ struct SandboxConfig {
     username: String,
     token: String,
     space_key: String,
+    parent_page_id: Option<String>,
     old_tag: String,
     new_tag: String,
 }
 
 impl SandboxConfig {
     fn from_env() -> Result<Self> {
-        // Load .sandbox.env if present; ignore errors so CI etc. can opt out.
+        // Load .env first (if present) to support standard local dev
+        dotenvy::dotenv().ok();
+        // Load .sandbox.env if present, overriding .env; ignore errors so CI etc. can opt out.
         let _ = dotenvy::from_filename(".sandbox.env");
 
         let base_url = env::var("ATLASSIAN_URL")
@@ -73,6 +81,7 @@ impl SandboxConfig {
             .context("ATLASSIAN_TOKEN must be set in .sandbox.env for e2e tests")?;
         let space_key = env::var("SANDBOX_SPACE_KEY")
             .context("SANDBOX_SPACE_KEY must be set in .sandbox.env for e2e tests")?;
+        let parent_page_id = env::var("SANDBOX_PARENT_PAGE_ID").ok();
         let old_tag = env::var("SANDBOX_OLD_TAG")
             .context("SANDBOX_OLD_TAG must be set in .sandbox.env for e2e tests")?;
         let new_tag = env::var("SANDBOX_NEW_TAG")
@@ -83,6 +92,7 @@ impl SandboxConfig {
             username,
             token,
             space_key,
+            parent_page_id,
             old_tag,
             new_tag,
         })
@@ -119,14 +129,14 @@ impl TestConfluenceClient {
     }
 
     /// Create a temporary test page in the sandbox space and return its page ID.
-    fn create_test_page(&self, space_key: &str) -> Result<String> {
+    fn create_test_page(&self, space_key: &str, parent_id: Option<&str>) -> Result<String> {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         let title = format!("ctag-e2e-test-{}", now);
 
-        let body = json!({
+        let mut body = json!({
             "type": "page",
             "title": title,
             "space": { "key": space_key },
@@ -137,6 +147,12 @@ impl TestConfluenceClient {
                 }
             }
         });
+
+        if let Some(pid) = parent_id {
+            if let Some(obj) = body.as_object_mut() {
+                obj.insert("ancestors".to_string(), json!([{"id": pid}]));
+            }
+        }
 
         let url = format!("{}/wiki/rest/api/content", self.base_url,);
 
@@ -257,7 +273,7 @@ where
 
     // Create a new test page
     let page_id = client
-        .create_test_page(&cfg.space_key)
+        .create_test_page(&cfg.space_key, cfg.parent_page_id.as_deref())
         .context("failed to create test page")?;
 
     // CQL that targets only this page
@@ -365,6 +381,133 @@ fn e2e_add_replace_remove_flow_on_new_page() -> Result<()> {
             cfg.new_tag,
             tags
         );
+
+        Ok(())
+    })
+}
+
+/// E2E flow testing `from-json` and `from-stdin-json` commands.
+#[test]
+#[ignore]
+fn e2e_bulk_commands_flow() -> Result<()> {
+    with_test_page(|cfg, page_id| {
+        let cql = format!("id = {}", page_id);
+
+        // Prepare a JSON file for `from-json`
+        // We will perform:
+        // 1. ADD old_tag
+        // 2. CHECK if it exists
+        // 3. REPLACE old -> new using `from-stdin-json`
+        // 4. CHECK if new exists
+        // 5. REMOVE new using `from-json`
+
+        // 1. Run `from-json` to ADD the old tag
+        let add_json_ops = json!({
+            "description": "Add old tag via bulk",
+            "commands": [
+                {
+                    "action": "add",
+                    "cql_expression": cql,
+                    "tags": [cfg.old_tag],
+                    "interactive": false
+                }
+            ]
+        });
+
+        let mut temp_file = env::temp_dir();
+        temp_file.push(format!("ctag_e2e_add_{}.json", page_id));
+        let mut f = fs::File::create(&temp_file)?;
+        f.write_all(add_json_ops.to_string().as_bytes())?;
+        f.sync_all()?;
+        drop(f);
+
+        let mut from_json_cmd = Command::cargo_bin("ctag")?;
+        from_json_cmd
+            .arg("from-json")
+            .arg(temp_file.to_str().unwrap());
+
+        from_json_cmd.assert().success();
+
+        // Verify add worked
+        let tags = get_tags(&cql)?;
+        assert!(tags.contains(&cfg.old_tag), "from-json add failed");
+
+        // 3. Run `from-stdin-json` to REPLACE old -> new
+        let replace_json_ops = json!({
+            "description": "Replace old with new tag via bulk stdin",
+            "commands": [
+                {
+                    "action": "replace",
+                    "cql_expression": cql,
+                    "tags": {
+                        &cfg.old_tag: &cfg.new_tag
+                    },
+                    "interactive": false
+                }
+            ]
+        });
+
+        let mut from_stdin_cmd = Command::cargo_bin("ctag")?;
+        let mut child = from_stdin_cmd
+            .arg("from-stdin-json")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        {
+            let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+            stdin.write_all(replace_json_ops.to_string().as_bytes())?;
+        }
+
+        let output = child.wait_with_output()?;
+        assert!(output.status.success(), "from-stdin-json failed");
+
+        // Verify replace worked
+        let tags = get_tags(&cql)?;
+        assert!(
+            !tags.contains(&cfg.old_tag),
+            "from-stdin-json replace failed (old tag still matches)"
+        );
+        assert!(
+            tags.contains(&cfg.new_tag),
+            "from-stdin-json replace failed (new tag missing)"
+        );
+
+        // 5. Run `from-json` again to REMOVE new tag
+        let remove_json_ops = json!({
+            "description": "Remove new tag via bulk",
+            "commands": [
+                {
+                    "action": "remove",
+                    "cql_expression": cql,
+                    "tags": [cfg.new_tag],
+                    "interactive": false
+                }
+            ]
+        });
+
+        let mut temp_file_rem = env::temp_dir();
+        temp_file_rem.push(format!("ctag_e2e_remove_{}.json", page_id));
+        let mut f = fs::File::create(&temp_file_rem)?;
+        f.write_all(remove_json_ops.to_string().as_bytes())?;
+        f.sync_all()?;
+        drop(f);
+
+        let mut from_json_rem_cmd = Command::cargo_bin("ctag")?;
+        from_json_rem_cmd
+            .arg("from-json")
+            .arg(temp_file_rem.to_str().unwrap());
+
+        from_json_rem_cmd.assert().success();
+
+        // Verify remove worked
+        let tags = get_tags(&cql)?;
+        assert!(!tags.contains(&cfg.new_tag), "from-json remove failed");
+
+        // Cleanup temp files
+        let _ = fs::remove_file(temp_file);
+        let _ = fs::remove_file(temp_file_rem);
 
         Ok(())
     })
