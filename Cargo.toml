@@ -19,6 +19,9 @@ log = "0.4"
 env_logger = "0.11"
 base64 = "0.22"
 urlencoding = "2.1"
+colored = "3.0.0"
+fastrand = "2.3"
+comfy-table = "7.1"
 
 [dev-dependencies]
 assert_cmd = "2.0"

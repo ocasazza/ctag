@@ -1,9 +1,9 @@
 use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
 use crate::models::ProcessResults;
+use crate::ui;
 use anyhow::Result;
 use clap::Args;
 use dialoguer::Confirm;
-use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 
 #[derive(Args)]
@@ -62,40 +62,42 @@ pub fn run(
     dry_run: bool,
     show_progress: bool,
 ) -> Result<()> {
+    ui::print_header("REPLACE TAGS");
+
     // Parse tag pairs
     let tag_mapping = parse_tag_pairs(&args.tag_pairs)?;
 
     // Get matching pages
-    eprintln!("Finding pages matching: {}", args.cql_expression);
+    ui::print_step(&format!("Finding pages matching: {}", args.cql_expression));
     let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
 
     if pages.is_empty() {
-        eprintln!("No pages found matching the CQL expression.");
+        ui::print_warning("No pages found matching the CQL expression.");
         if dry_run {
-            eprintln!("DRY RUN: No changes will be made.");
+            ui::print_dry_run("No changes will be made.");
         }
         return Ok(());
     }
 
-    eprintln!("Found {} matching pages.", pages.len());
+    ui::print_info(&format!("Found {} matching pages.", pages.len()));
 
     // Apply exclusion if specified
     if let Some(cql_exclude) = &args.cql_exclude {
-        eprintln!("Finding pages to exclude: {}", cql_exclude);
+        ui::print_step(&format!("Finding pages to exclude: {}", cql_exclude));
         let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
         if !excluded_pages.is_empty() {
             let original_count = pages.len();
             pages = filter_excluded_pages(pages, &excluded_pages);
-            eprintln!(
+            ui::print_info(&format!(
                 "Excluded {} pages. {} pages remaining.",
                 original_count - pages.len(),
                 pages.len()
-            );
+            ));
         }
     }
 
     if dry_run {
-        eprintln!("DRY RUN: No changes will be made.");
+        ui::print_dry_run("No changes will be made.");
         for page in &pages {
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page
@@ -105,13 +107,8 @@ pub fn run(
                 .unwrap_or("Unknown");
             let old_tags: Vec<_> = tag_mapping.keys().collect();
             let new_tags: Vec<_> = tag_mapping.values().collect();
-            eprintln!(
-                "Would replace tags {:?} with {:?} on '{}' (Space: {})",
-                old_tags,
-                new_tags,
-                sanitize_text(title),
-                space
-            );
+            ui::print_page_action("Would replace tags", &sanitize_text(title), space);
+            ui::print_substep(&format!("From: {:?} To: {:?}", old_tags, new_tags));
         }
         return Ok(());
     }
@@ -119,14 +116,7 @@ pub fn run(
     // Process the pages
     let mut results = ProcessResults::new(pages.len());
     let progress = if show_progress {
-        let pb = ProgressBar::new(pages.len() as u64);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-                .unwrap()
-                .progress_chars("##-"),
-        );
-        Some(pb)
+        Some(ui::create_progress_bar(pages.len() as u64))
     } else {
         None
     };
@@ -155,20 +145,28 @@ pub fn run(
 
         // Interactive confirmation
         if args.interactive {
-            let page_info = format!(
-                "'{}' (Space: {}, ID: {})",
-                sanitize_text(title),
-                space,
-                page_id
-            );
+            if let Some(pb) = &progress {
+                pb.suspend(|| {
+                    ui::print_page_action("Replacing tags on", &sanitize_text(title), space);
+                });
+            } else {
+                ui::print_page_action("Replacing tags on", &sanitize_text(title), space);
+            }
+
             let old_tags: Vec<_> = tag_mapping.keys().collect();
             let new_tags: Vec<_> = tag_mapping.values().collect();
             let prompt = format!(
-                "Replace tags {:?} with {:?} on {}? (Enter '{}' to abort)",
-                old_tags, new_tags, page_info, args.abort_key
+                "Replace tags {:?} with {:?}? (Enter '{}' to abort)",
+                old_tags, new_tags, args.abort_key
             );
 
-            match Confirm::new().with_prompt(&prompt).interact() {
+            let confirmed = if let Some(pb) = &progress {
+                pb.suspend(|| Confirm::new().with_prompt(&prompt).interact())
+            } else {
+                Confirm::new().with_prompt(&prompt).interact()
+            };
+
+            match confirmed {
                 Ok(true) => {}
                 Ok(false) => {
                     results.skipped += 1;
@@ -204,12 +202,13 @@ pub fn run(
     }
 
     // Display results
-    eprintln!("\nResults:");
-    eprintln!("  Total pages: {}", results.total);
-    eprintln!("  Processed: {}", results.processed);
-    eprintln!("  Skipped: {}", results.skipped);
-    eprintln!("  Successful: {}", results.success);
-    eprintln!("  Failed: {}", results.failed);
+    ui::print_summary(
+        results.total,
+        results.processed,
+        results.skipped,
+        results.success,
+        results.failed,
+    );
 
     Ok(())
 }

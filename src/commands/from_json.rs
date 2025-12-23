@@ -1,4 +1,5 @@
 use crate::api::ConfluenceClient;
+use crate::ui;
 use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
@@ -87,6 +88,8 @@ pub fn run(
     dry_run: bool,
     progress: bool,
 ) -> Result<()> {
+    ui::print_header("EXECUTE FROM JSON");
+
     // Read and parse JSON file
     let json_content = fs::read_to_string(&args.json_file)
         .context(format!("Failed to read JSON file: {}", args.json_file))?;
@@ -95,22 +98,22 @@ pub fn run(
         serde_json::from_str(&json_content).context("Failed to parse JSON file")?;
 
     if let Some(desc) = &json_commands.description {
-        println!("Description: {}", desc);
+        ui::print_info(&format!("Description: {}", desc));
     }
 
-    println!(
+    ui::print_info(&format!(
         "Found {} commands in the JSON file.",
         json_commands.commands.len()
-    );
+    ));
 
     for (i, command) in json_commands.commands.iter().enumerate() {
-        println!(
-            "\nExecuting command {}/{}: {} on {}",
+        ui::print_step(&format!(
+            "Command {}/{}: {} on {}",
             i + 1,
             json_commands.commands.len(),
-            command.action,
+            command.action.to_uppercase(),
             command.cql_expression
-        );
+        ));
 
         match command.action.as_str() {
             "add" => {
@@ -162,12 +165,12 @@ pub fn run(
                 crate::commands::replace::run(replace_args, client, dry_run, progress)?;
             }
             _ => {
-                eprintln!("Unknown action: {}", command.action);
+                ui::print_error(&format!("Unknown action: {}", command.action));
             }
         }
     }
 
-    println!("\nAll commands completed.");
+    ui::print_success("All commands completed.");
     Ok(())
 }
 

@@ -6,6 +6,7 @@ use std::env;
 mod api;
 mod commands;
 mod models;
+mod ui;
 
 #[derive(Parser)]
 #[command(name = "ctag")]

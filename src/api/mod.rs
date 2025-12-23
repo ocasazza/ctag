@@ -35,6 +35,68 @@ impl ConfluenceClient {
         headers
     }
 
+    fn send_request<F>(&self, build_request: F) -> Result<reqwest::blocking::Response>
+    where
+        F: Fn() -> reqwest::blocking::RequestBuilder,
+    {
+        const MAX_RETRIES: u32 = 5;
+        let mut attempt = 0;
+        let mut delay = std::time::Duration::from_secs(1);
+
+        loop {
+            attempt += 1;
+            let request = build_request();
+            match request.send() {
+                Ok(response) => {
+                    let status = response.status();
+                    if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                    {
+                        if attempt > MAX_RETRIES {
+                            return Ok(response);
+                        }
+                        let mut wait_duration = delay;
+                        if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                            if let Some(retry_after) =
+                                response.headers().get(reqwest::header::RETRY_AFTER)
+                            {
+                                if let Ok(retry_str) = retry_after.to_str() {
+                                    if let Ok(seconds) = retry_str.parse::<u64>() {
+                                        wait_duration = std::time::Duration::from_secs(seconds);
+                                    }
+                                }
+                            }
+                        }
+                        // Add jitter
+                        let jitter_ms = fastrand::u64(..1000);
+                        wait_duration += std::time::Duration::from_millis(jitter_ms);
+                        warn!(
+                            "Request failed with status {}, retrying in {:?} (attempt {}/{})",
+                            status, wait_duration, attempt, MAX_RETRIES
+                        );
+                        std::thread::sleep(wait_duration);
+                        delay = std::cmp::min(delay * 2, std::time::Duration::from_secs(30));
+                        continue;
+                    } else {
+                        return Ok(response);
+                    }
+                }
+                Err(e) => {
+                    if attempt > MAX_RETRIES {
+                        return Err(e.into());
+                    }
+                    let jitter_ms = fastrand::u64(..1000);
+                    let wait_duration = delay + std::time::Duration::from_millis(jitter_ms);
+                    warn!(
+                        "Request failed: {}, retrying in {:?} (attempt {}/{})",
+                        e, wait_duration, attempt, MAX_RETRIES
+                    );
+                    std::thread::sleep(wait_duration);
+                    delay = std::cmp::min(delay * 2, std::time::Duration::from_secs(30));
+                }
+            }
+        }
+    }
+
     /// Execute a CQL query and return matching pages
     pub fn execute_cql_query(
         &self,
@@ -57,10 +119,7 @@ impl ConfluenceClient {
         info!("Executing CQL query: {}", cql_expression);
 
         let response = self
-            .client
-            .get(&url)
-            .headers(self.headers())
-            .send()
+            .send_request(|| self.client.get(&url).headers(self.headers()))
             .context("Failed to execute CQL query")?;
 
         if !response.status().is_success() {
@@ -136,10 +195,7 @@ impl ConfluenceClient {
         let url = format!("{}/wiki/rest/api/content/{}/label", self.base_url, page_id);
 
         let response = self
-            .client
-            .get(&url)
-            .headers(self.headers())
-            .send()
+            .send_request(|| self.client.get(&url).headers(self.headers()))
             .context("Failed to get page labels")?;
 
         if !response.status().is_success() {
@@ -163,11 +219,7 @@ impl ConfluenceClient {
         let body = json!([{"name": tag}]);
 
         let response = self
-            .client
-            .post(&url)
-            .headers(self.headers())
-            .json(&body)
-            .send()
+            .send_request(|| self.client.post(&url).headers(self.headers()).json(&body))
             .context("Failed to add tag")?;
 
         if !response.status().is_success() {
@@ -196,10 +248,7 @@ impl ConfluenceClient {
         );
 
         let response = self
-            .client
-            .delete(&url)
-            .headers(self.headers())
-            .send()
+            .send_request(|| self.client.delete(&url).headers(self.headers()))
             .context("Failed to remove tag")?;
 
         if !response.status().is_success() {

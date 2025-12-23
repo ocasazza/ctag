@@ -1,4 +1,6 @@
 use crate::api::ConfluenceClient;
+use crate::commands::from_json::{parse_add_remove_tags, parse_replace_tag_pairs};
+use crate::ui;
 use anyhow::{Context, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
@@ -38,6 +40,8 @@ pub fn run(
     dry_run: bool,
     progress: bool,
 ) -> Result<()> {
+    ui::print_header("EXECUTE FROM STDIN JSON");
+
     // Read from stdin
     let mut buffer = String::new();
     io::stdin()
@@ -53,22 +57,22 @@ pub fn run(
         serde_json::from_str(&buffer).context("Failed to parse JSON from stdin")?;
 
     if let Some(desc) = &json_commands.description {
-        println!("Description: {}", desc);
+        ui::print_info(&format!("Description: {}", desc));
     }
 
-    println!(
+    ui::print_info(&format!(
         "Found {} commands in the JSON data.",
         json_commands.commands.len()
-    );
+    ));
 
     for (i, command) in json_commands.commands.iter().enumerate() {
-        println!(
-            "\nExecuting command {}/{}: {} on {}",
+        ui::print_step(&format!(
+            "Command {}/{}: {} on {}",
             i + 1,
             json_commands.commands.len(),
-            command.action,
+            command.action.to_uppercase(),
             command.cql_expression
-        );
+        ));
 
         match command.action.as_str() {
             "add" => {
@@ -76,22 +80,7 @@ pub fn run(
                     .tags
                     .as_ref()
                     .context("'tags' field required for 'add' action")?;
-                let tags = match tags_value {
-                    Value::Array(items) => {
-                        let mut tags = Vec::with_capacity(items.len());
-                        for item in items {
-                            if let Some(s) = item.as_str() {
-                                tags.push(s.to_string());
-                            } else {
-                                anyhow::bail!(
-                                    "'tags' array for 'add' action must contain only strings"
-                                );
-                            }
-                        }
-                        tags
-                    }
-                    _ => anyhow::bail!("'tags' field for 'add' action must be an array of strings"),
-                };
+                let tags = parse_add_remove_tags(tags_value, "add")?;
 
                 let add_args = crate::commands::add::AddArgs {
                     cql_expression: command.cql_expression.clone(),
@@ -107,24 +96,7 @@ pub fn run(
                     .tags
                     .as_ref()
                     .context("'tags' field required for 'remove' action")?;
-                let tags = match tags_value {
-                    Value::Array(items) => {
-                        let mut tags = Vec::with_capacity(items.len());
-                        for item in items {
-                            if let Some(s) = item.as_str() {
-                                tags.push(s.to_string());
-                            } else {
-                                anyhow::bail!(
-                                    "'tags' array for 'remove' action must contain only strings"
-                                );
-                            }
-                        }
-                        tags
-                    }
-                    _ => anyhow::bail!(
-                        "'tags' field for 'remove' action must be an array of strings"
-                    ),
-                };
+                let tags = parse_add_remove_tags(tags_value, "remove")?;
 
                 let remove_args = crate::commands::remove::RemoveArgs {
                     cql_expression: command.cql_expression.clone(),
@@ -140,28 +112,8 @@ pub fn run(
                     .tags
                     .as_ref()
                     .context("'tags' field required for 'replace' action")?;
-                let tag_mapping: std::collections::HashMap<String, String> = match tags_value {
-                    Value::Object(map) => {
-                        let mut out = std::collections::HashMap::new();
-                        for (k, v) in map {
-                            if let Some(s) = v.as_str() {
-                                out.insert(k.clone(), s.to_string());
-                            } else {
-                                anyhow::bail!(
-                                    "'tags' object for 'replace' action must map to string values"
-                                );
-                            }
-                        }
-                        out
-                    }
-                    _ => anyhow::bail!(
-                        "'tags' field for 'replace' action must be an object mapping old->new tag"
-                    ),
-                };
-                let tag_pairs: Vec<String> = tag_mapping
-                    .iter()
-                    .map(|(k, v)| format!("{}={}", k, v))
-                    .collect();
+                let tag_pairs = parse_replace_tag_pairs(tags_value)?;
+
                 let replace_args = crate::commands::replace::ReplaceArgs {
                     cql_expression: command.cql_expression.clone(),
                     tag_pairs,
@@ -172,11 +124,11 @@ pub fn run(
                 crate::commands::replace::run(replace_args, client, dry_run, progress)?;
             }
             _ => {
-                eprintln!("Unknown action: {}", command.action);
+                ui::print_error(&format!("Unknown action: {}", command.action));
             }
         }
     }
 
-    println!("\nAll commands completed.");
+    ui::print_success("All commands completed.");
     Ok(())
 }
