@@ -2,48 +2,7 @@
 
 A command-line tool for managing tags on Confluence pages in bulk, written in Rust with Nix for environment management.
 
-## Features
-
-- **Add, remove, or replace tags** on Confluence pages in bulk
-- **Use CQL queries** to select pages based on various criteria
-- **Interactive mode** to confirm each action before execution
-- **Dry-run mode** to preview changes without making modifications
-- **Progress bars** for long-running operations
-- **JSON-based batch operations** for complex workflows
-- **Multiple output formats** (table, JSON) for the `get` command
-
-## Prerequisites
-
-- Nix with flakes enabled
-- Confluence Cloud instance with API access
-
-## Setup
-
-### 1. Enter the development environment
-
-```bash
-nix develop
-```
-
-This will set up all required dependencies including Rust, Cargo, and development tools.
-
-### 2. Build the project
-
-```bash
-cargo build --release
-```
-
-### 3. Configure environment variables
-
-Create a `.env` file in the project root with your Confluence credentials:
-
-```env
-ATLASSIAN_URL=https://your-domain.atlassian.net
-ATLASSIAN_USERNAME=your-email@example.com
-ATLASSIAN_TOKEN=your-api-token
-```
-
-To generate an API token, visit: https://id.atlassian.com/manage-profile/security/api-tokens
+![ctag demo](demo.gif)
 
 ## Usage
 
@@ -81,6 +40,22 @@ ctag get "space = DOCS" --format json
 
 # Save to file
 ctag get "space = DOCS" --output-file results.json
+```
+
+### Regular Expression Support
+
+#### Remove tags by pattern
+
+```bash
+# Remove all tags starting with "test-tag-"
+ctag remove "space = DOCS" "test-tag-.*" --regex
+```
+
+#### Replace tags by pattern
+
+```bash
+# Replace any tag matching "id-[0-9]+" with "matched-id"
+ctag replace "space = DOCS" "id-[0-9]+=matched-id" --regex
 ```
 
 ### Advanced Options

@@ -14,6 +14,9 @@ ci:
   - name: Rust Clippy
     command: nix develop --accept-flake-config --command cargo clippy -- -D warnings
 
+  - name: Run VHS
+    command: nix develop --accept-flake-config --command vhs demo.tape
+
   - name: Unit Tests
     command: nix develop --accept-flake-config --command cargo test
 

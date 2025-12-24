@@ -1,0 +1,17 @@
+{
+  "description": "Regex batch update",
+  "commands": [
+    {
+      "action": "replace",
+      "cql_expression": "space = DOCS",
+      "tags": { "legacy-.*": "modern" },
+      "regex": true
+    },
+    {
+      "action": "remove",
+      "cql_expression": "space = DOCS",
+      "tags": ["temp-.*"],
+      "regex": true
+    }
+  ]
+}

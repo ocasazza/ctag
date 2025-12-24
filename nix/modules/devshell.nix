@@ -19,6 +19,7 @@
           nixd # Nix language server
           bacon
           omnix
+          vhs
           (writeShellScriptBin "ctag" ''
             exec cargo run --quiet -- "$@"
           '')
