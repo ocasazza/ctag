@@ -355,12 +355,7 @@ pub fn filter_excluded_pages(
         .collect()
 }
 
-// Helper function to sanitize text for display
-pub fn sanitize_text(text: &str) -> String {
-    text.chars()
-        .filter(|c| !c.is_control() || c.is_whitespace())
-        .collect()
-}
+pub use crate::models::sanitize_text;
 
 /// Filter tags that match any of the provided regexes
 pub fn filter_tags_by_regex(tags: Vec<String>, regexes: &[regex::Regex]) -> Vec<String> {

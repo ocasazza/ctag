@@ -1,8 +1,10 @@
-use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
+use crate::api::{filter_excluded_pages, ConfluenceClient};
+use crate::models::sanitize_text;
 use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
+use colored::Colorize;
 use dialoguer::Confirm;
 use std::collections::HashMap;
 
@@ -175,10 +177,17 @@ pub fn run(
                 continue;
             }
 
-            let old_tags: Vec<_> = replacements.keys().collect();
-            let new_tags: Vec<_> = replacements.values().collect();
-            ui::print_page_action("Would replace tags", &sanitize_text(title), space);
-            ui::print_substep(&format!("From: {:?} To: {:?}", old_tags, new_tags));
+            let display_title = page.printable_clickable_title(client.base_url());
+            ui::print_page_action("Would replace tags on", &display_title, space);
+            for (old, new) in &replacements {
+                ui::print_substep(&format!(
+                    "{}: {} {} {}",
+                    "Replace".yellow(),
+                    old.dimmed(),
+                    "→".bright_black(),
+                    new.green()
+                ));
+            }
         }
         return Ok(());
     }
@@ -206,7 +215,6 @@ pub fn run(
             }
         };
 
-        let title = page.title.as_deref().unwrap_or("Unknown");
         let space = page.space_name();
 
         let replacements = if let Some(regex_pairs) = &compiled_regexes {
@@ -226,12 +234,31 @@ pub fn run(
 
         // Interactive confirmation
         if args.interactive {
+            let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
-                    ui::print_page_action("Replacing tags on", &sanitize_text(title), space);
+                    ui::print_page_action("Replacing tags on", &display_title, space);
+                    for (old, new) in &replacements {
+                        ui::print_substep(&format!(
+                            "{}: {} {} {}",
+                            "Replace".yellow(),
+                            old.dimmed(),
+                            "→".bright_black(),
+                            new.green()
+                        ));
+                    }
                 });
             } else {
-                ui::print_page_action("Replacing tags on", &sanitize_text(title), space);
+                ui::print_page_action("Replacing tags on", &display_title, space);
+                for (old, new) in &replacements {
+                    ui::print_substep(&format!(
+                        "{}: {} {} {}",
+                        "Replace".yellow(),
+                        old.dimmed(),
+                        "→".bright_black(),
+                        new.green()
+                    ));
+                }
             }
 
             let old_tags: Vec<_> = replacements.keys().collect();

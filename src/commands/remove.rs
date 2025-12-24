@@ -1,8 +1,10 @@
-use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
+use crate::api::{filter_excluded_pages, ConfluenceClient};
+use crate::models::sanitize_text;
 use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
+use colored::Colorize;
 use dialoguer::Confirm;
 
 #[derive(Args)]
@@ -148,8 +150,11 @@ pub fn run(
                 continue;
             }
 
-            ui::print_page_action("Would remove tags", &sanitize_text(title), space);
-            ui::print_substep(&format!("Tags: {:?}", tags_to_remove));
+            let display_title = page.printable_clickable_title(client.base_url());
+            ui::print_page_action("Would remove tags from", &display_title, space);
+            for tag in &tags_to_remove {
+                ui::print_substep(&format!("{}: {}", "Remove".red(), tag));
+            }
         }
         return Ok(());
     }
@@ -177,7 +182,6 @@ pub fn run(
             }
         };
 
-        let title = page.title.as_deref().unwrap_or("Unknown");
         let space = page.space_name();
 
         let tags_to_remove = if let Some(regexes) = &compiled_regexes {
@@ -197,12 +201,19 @@ pub fn run(
 
         // Interactive confirmation
         if args.interactive {
+            let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
-                    ui::print_page_action("Removing tags from", &sanitize_text(title), space);
+                    ui::print_page_action("Removing tags from", &display_title, space);
+                    for tag in &tags_to_remove {
+                        ui::print_substep(&format!("{}: {}", "Remove".red(), tag));
+                    }
                 });
             } else {
-                ui::print_page_action("Removing tags from", &sanitize_text(title), space);
+                ui::print_page_action("Removing tags from", &display_title, space);
+                for tag in &tags_to_remove {
+                    ui::print_substep(&format!("{}: {}", "Remove".red(), tag));
+                }
             }
 
             let prompt = format!(

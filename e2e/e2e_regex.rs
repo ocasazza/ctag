@@ -36,8 +36,9 @@ fn e2e_regex_remove_verification() -> Result<()> {
             .assert()
             .success()
             .stderr(
-                predicate::str::contains("Would remove tags")
-                    .and(predicate::str::contains("[\"test-tag-1\", \"test-tag-2\"]")),
+                predicate::str::contains("Would remove tags from")
+                    .and(predicate::str::contains("Remove: test-tag-1"))
+                    .and(predicate::str::contains("Remove: test-tag-2")),
             );
 
         // 3. Remove using regex

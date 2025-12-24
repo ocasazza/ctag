@@ -136,12 +136,10 @@ pub fn print_header(title: &str) {
 
 pub fn print_page_action(action: &str, title: &str, space: &str) {
     eprintln!(
-        "{} {} {} {} {}",
+        "{} {} {}",
         "→".bright_blue().bold(),
         action.bold(),
-        "\"".dimmed(),
-        title.bright_white(),
-        "\"".dimmed()
+        title.bright_white()
     );
-    eprintln!("  {} {}", "in space".dimmed(), space.cyan());
+    eprintln!("  {} {}", "space:".dimmed(), space.cyan());
 }

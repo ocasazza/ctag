@@ -31,6 +31,31 @@ impl SearchResultItem {
             })
             .unwrap_or("Unknown")
     }
+
+    pub fn page_id(&self) -> Option<&str> {
+        self.content.as_ref().and_then(|c| c.id.as_deref())
+    }
+
+    pub fn printable_clickable_title(&self, base_url: &str) -> String {
+        let title = self.title.as_deref().unwrap_or("Unknown");
+        let sanitized = sanitize_text(title);
+        if let Some(id) = self.page_id() {
+            format!(
+                "\x1b]8;;{}/wiki/pages/viewpage.action?pageId={}\x1b\\{}\x1b]8;;\x1b\\",
+                base_url.trim_end_matches('/'),
+                id,
+                sanitized
+            )
+        } else {
+            sanitized
+        }
+    }
+}
+
+pub fn sanitize_text(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_control() || c.is_whitespace())
+        .collect()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

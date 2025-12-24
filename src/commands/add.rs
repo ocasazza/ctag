@@ -1,8 +1,9 @@
-use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
+use crate::api::{filter_excluded_pages, ConfluenceClient};
 use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
+use colored::Colorize;
 use dialoguer::Confirm;
 
 #[derive(Args)]
@@ -103,10 +104,13 @@ pub fn run(
     if dry_run {
         ui::print_dry_run("No changes will be made.");
         for page in &pages {
-            let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page.space_name();
-            ui::print_page_action("Would add tags", &sanitize_text(title), space);
-            ui::print_substep(&format!("Tags: {:?}", args.tags));
+            let display_title = page.printable_clickable_title(client.base_url());
+
+            ui::print_page_action("Would add tags to", &display_title, space);
+            for tag in &args.tags {
+                ui::print_substep(&format!("{}: {}", "Add".green(), tag));
+            }
         }
         return Ok(());
     }
@@ -133,17 +137,23 @@ pub fn run(
                 continue;
             }
         };
-        let title = page.title.as_deref().unwrap_or("Unknown");
         let space = page.space_name();
 
         // Interactive confirmation
         if args.interactive {
+            let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
-                    ui::print_page_action("Adding tags to", &sanitize_text(title), space);
+                    ui::print_page_action("Adding tags to", &display_title, space);
+                    for tag in &args.tags {
+                        ui::print_substep(&format!("{}: {}", "Add".green(), tag));
+                    }
                 });
             } else {
-                ui::print_page_action("Adding tags to", &sanitize_text(title), space);
+                ui::print_page_action("Adding tags to", &display_title, space);
+                for tag in &args.tags {
+                    ui::print_substep(&format!("{}: {}", "Add".green(), tag));
+                }
             }
 
             let prompt = format!(
