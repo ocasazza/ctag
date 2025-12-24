@@ -143,19 +143,7 @@ pub fn run(
             }
         };
         let title = sanitize_text(page.title.as_deref().unwrap_or("Unknown"));
-        let space = page
-            .content
-            .as_ref()
-            .and_then(|c| c.space.as_ref())
-            .and_then(|s| s.name.as_deref())
-            .or_else(|| page.space.as_ref().and_then(|s| s.name.as_deref())) // Added check for page.space
-            .or_else(|| {
-                page.result_global_container
-                    .as_ref()
-                    .and_then(|c| c.title.as_deref())
-            })
-            .unwrap_or("Unknown")
-            .to_string();
+        let space = page.space_name().to_string();
 
         let tags = client.get_page_tags(&page_id).unwrap_or_default();
         all_tags.extend(tags.iter().cloned());

@@ -129,11 +129,7 @@ pub fn run(
             };
 
             let title = page.title.as_deref().unwrap_or("Unknown");
-            let space = page
-                .result_global_container
-                .as_ref()
-                .and_then(|c| c.title.as_deref())
-                .unwrap_or("Unknown");
+            let space = page.space_name();
 
             let tags_to_remove = if let Some(regexes) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id)?;
@@ -182,11 +178,7 @@ pub fn run(
         };
 
         let title = page.title.as_deref().unwrap_or("Unknown");
-        let space = page
-            .result_global_container
-            .as_ref()
-            .and_then(|c| c.title.as_deref())
-            .unwrap_or("Unknown");
+        let space = page.space_name();
 
         let tags_to_remove = if let Some(regexes) = &compiled_regexes {
             let current_tags = client.get_page_tags(page_id)?;

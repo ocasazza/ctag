@@ -17,6 +17,22 @@ pub struct SearchResultItem {
     pub result_global_container: Option<GlobalContainer>,
 }
 
+impl SearchResultItem {
+    pub fn space_name(&self) -> &str {
+        self.content
+            .as_ref()
+            .and_then(|c| c.space.as_ref())
+            .and_then(|s| s.name.as_deref())
+            .or_else(|| self.space.as_ref().and_then(|s| s.name.as_deref()))
+            .or_else(|| {
+                self.result_global_container
+                    .as_ref()
+                    .and_then(|c| c.title.as_deref())
+            })
+            .unwrap_or("Unknown")
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Content {
     pub id: Option<String>,
