@@ -3,7 +3,7 @@
 mod common;
 use anyhow::Result;
 use assert_cmd::prelude::*;
-use common::{get_tags, with_test_page, SandboxConfig, TestConfluenceClient};
+use common::{get_tags, with_test_page};
 use predicates::prelude::*;
 use std::process::Command;
 
@@ -152,59 +152,4 @@ fn e2e_dry_run_verification() -> Result<()> {
 
         Ok(())
     })
-}
-
-#[test]
-#[ignore]
-fn e2e_exclusion_and_multi_page_verification() -> Result<()> {
-    let cfg = match SandboxConfig::from_env()? {
-        Some(c) => c,
-        None => return Ok(()),
-    };
-    let client = TestConfluenceClient::new(&cfg)?;
-
-    // Create TWO pages
-    let page_id_1 = client.create_test_page(&cfg.space_key, cfg.parent_page_id.as_deref())?;
-    let page_id_2 = client.create_test_page(&cfg.space_key, cfg.parent_page_id.as_deref())?;
-
-    let cql_both = format!("id in ({}, {})", page_id_1, page_id_2);
-    let cql_1 = format!("id = {}", page_id_1);
-    let cql_2 = format!("id = {}", page_id_2);
-
-    // Wait for index
-    std::thread::sleep(std::time::Duration::from_secs(15));
-
-    // Add tag to BOTH
-    let mut add_cmd = Command::cargo_bin("ctag")?;
-    add_cmd
-        .arg("add")
-        .arg(&cql_both)
-        .arg(&cfg.old_tag)
-        .assert()
-        .success();
-
-    assert!(get_tags(&cql_1)?.contains(&cfg.old_tag));
-    assert!(get_tags(&cql_2)?.contains(&cfg.old_tag));
-
-    // Remove tag from BOTH BUT EXCLUDE page 2
-    let mut remove_cmd = Command::cargo_bin("ctag")?;
-    remove_cmd
-        .arg("remove")
-        .arg(&cql_both)
-        .arg(&cfg.old_tag)
-        .arg("--cql-exclude")
-        .arg(&cql_2)
-        .assert()
-        .success();
-
-    // Page 1 should be clean
-    assert!(!get_tags(&cql_1)?.contains(&cfg.old_tag));
-    // Page 2 should STILL have the tag
-    assert!(get_tags(&cql_2)?.contains(&cfg.old_tag));
-
-    // Cleanup
-    let _ = client.delete_page(&page_id_1);
-    let _ = client.delete_page(&page_id_2);
-
-    Ok(())
 }

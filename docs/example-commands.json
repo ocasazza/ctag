@@ -5,15 +5,13 @@
       "action": "add",
       "cql_expression": "space = DOCS AND title ~ 'Project'",
       "tags": ["documentation", "project"],
-      "interactive": false,
-      "cql_exclude": null
+      "interactive": false
     },
     {
       "action": "remove",
       "cql_expression": "space = ARCHIVE",
       "tags": ["outdated", "deprecated"],
-      "interactive": true,
-      "cql_exclude": "label = 'keep'"
+      "interactive": true
     },
     {
       "action": "replace",
@@ -22,8 +20,7 @@
         "old-tag": "new-tag",
         "typo": "correct"
       },
-      "interactive": false,
-      "cql_exclude": "label = 'do-not-modify'"
+      "interactive": false
     }
   ]
 }

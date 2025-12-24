@@ -361,7 +361,6 @@ pub fn compute_replacements_by_regex(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Content, GlobalContainer, SearchResultItem};
 
     #[test]
     fn sanitize_text_removes_control_chars_but_keeps_whitespace() {
@@ -445,40 +444,5 @@ mod tests {
         ];
         let replacements = compute_replacements_by_regex(tags, &regex_pairs);
         assert_eq!(replacements.get("match-both"), Some(&"first".to_string()));
-    }
-
-    #[test]
-    fn filter_excluded_pages_filters_by_content_id() {
-        fn page_with_id(id: &str) -> SearchResultItem {
-            SearchResultItem {
-                content: Some(Content {
-                    id: Some(id.to_string()),
-                    title: Some(format!("Page {}", id)),
-                    content_type: Some("page".to_string()),
-                    status: Some("current".to_string()),
-                    space: None,
-                }),
-                title: Some(format!("Page {}", id)),
-                space: None,
-                result_global_container: Some(GlobalContainer {
-                    title: Some("SPACE".to_string()),
-                }),
-            }
-        }
-
-        let pages = vec![page_with_id("1"), page_with_id("2"), page_with_id("3")];
-
-        let excluded = vec![page_with_id("2")];
-
-        let filtered = filter_excluded_pages(pages, &excluded);
-        let ids: Vec<_> = filtered
-            .iter()
-            .filter_map(|p| p.content.as_ref()?.id.as_deref())
-            .collect();
-
-        assert_eq!(ids.len(), 2);
-        assert!(ids.contains(&"1"));
-        assert!(ids.contains(&"3"));
-        assert!(!ids.contains(&"2"));
     }
 }
