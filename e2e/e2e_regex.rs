@@ -79,12 +79,13 @@ fn e2e_regex_replace_verification() -> Result<()> {
             .assert()
             .success();
 
-        // 2. Replace using regex
+        // 2. Replace using regex with positional pairs
         let mut replace_cmd = Command::cargo_bin("ctag")?;
         replace_cmd
             .arg("replace")
             .arg(&cql)
-            .arg("id-.*=matched-id")
+            .arg("id-.*")
+            .arg("matched-id")
             .arg("--regex")
             .arg("--verbose")
             .assert()

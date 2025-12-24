@@ -1,4 +1,4 @@
-use crate::api::{filter_excluded_pages, ConfluenceClient};
+use crate::api::ConfluenceClient;
 use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
@@ -7,6 +7,21 @@ use colored::Colorize;
 use dialoguer::Confirm;
 
 #[derive(Args)]
+#[command(after_help = "\
+EXAMPLES:
+  # Add tags to all pages in a space
+  ctag add 'space = DOCS' tag1 tag2 tag3
+
+  # Add tags to recently modified pages
+  ctag add 'space = DOCS AND lastmodified > -7d' recent urgent
+
+  # Preview changes before applying
+  ctag --dry-run add 'space = DOCS' new-tag
+
+  # Interactive mode with confirmation
+  ctag add --interactive 'label = review' approved
+
+")]
 pub struct AddArgs {
     /// CQL expression to match pages
     pub cql_expression: String,
@@ -22,10 +37,6 @@ pub struct AddArgs {
     /// Key to abort all operations in interactive mode
     #[arg(long, default_value = "q")]
     pub abort_key: String,
-
-    /// CQL expression to match pages that should be excluded
-    #[arg(long)]
-    pub cql_exclude: Option<String>,
 }
 
 pub fn run(
@@ -53,7 +64,7 @@ pub fn run(
         None
     };
 
-    let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
+    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
 
     if let Some(s) = spinner {
         s.finish_and_clear();
@@ -69,36 +80,6 @@ pub fn run(
 
     if verbose {
         ui::print_info(&format!("Found {} matching pages.", pages.len()));
-    }
-
-    // Apply exclusion if specified
-    if let Some(cql_exclude) = &args.cql_exclude {
-        let spinner = if verbose || !show_progress {
-            Some(ui::create_spinner(&format!(
-                "Finding pages to exclude: {}",
-                cql_exclude
-            )))
-        } else {
-            None
-        };
-
-        let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
-
-        if let Some(s) = spinner {
-            s.finish_and_clear();
-        }
-
-        if !excluded_pages.is_empty() {
-            let original_count = pages.len();
-            pages = filter_excluded_pages(pages, &excluded_pages);
-            if verbose {
-                ui::print_info(&format!(
-                    "Excluded {} pages. {} pages remaining.",
-                    original_count - pages.len(),
-                    pages.len()
-                ));
-            }
-        }
     }
 
     if dry_run {

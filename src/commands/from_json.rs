@@ -34,7 +34,6 @@ pub(crate) struct JsonCommand {
     pub tags: Option<Value>,
     #[serde(default)]
     pub interactive: bool,
-    pub cql_exclude: Option<String>,
     #[serde(default)]
     pub regex: bool,
 }
@@ -126,7 +125,6 @@ pub(crate) fn process_single_command(
                 tags,
                 interactive: command.interactive,
                 abort_key: abort_key.to_string(),
-                cql_exclude: command.cql_exclude.clone(),
             };
             crate::commands::add::run(add_args, client, dry_run, progress, format)
         }
@@ -142,7 +140,6 @@ pub(crate) fn process_single_command(
                 tags,
                 interactive: command.interactive,
                 abort_key: abort_key.to_string(),
-                cql_exclude: command.cql_exclude.clone(),
                 regex: command.regex,
             };
             crate::commands::remove::run(remove_args, client, dry_run, progress, format)
@@ -152,14 +149,13 @@ pub(crate) fn process_single_command(
                 .tags
                 .as_ref()
                 .context("'tags' field required for 'replace' action")?;
-            let tag_pairs = parse_replace_tag_pairs(tags_value)?;
+            let tag_pairs = parse_replace_tag_pairs(tags_value, command.regex)?;
 
             let replace_args = crate::commands::replace::ReplaceArgs {
                 cql_expression: command.cql_expression.clone(),
                 tag_pairs,
                 interactive: command.interactive,
                 abort_key: abort_key.to_string(),
-                cql_exclude: command.cql_exclude.clone(),
                 regex: command.regex,
             };
             crate::commands::replace::run(replace_args, client, dry_run, progress, format)
@@ -192,8 +188,10 @@ pub(crate) fn parse_add_remove_tags(value: &Value, action: &str) -> Result<Vec<S
     }
 }
 
-/// Parse the `tags` value for replace actions as "old=new" pairs.
-pub(crate) fn parse_replace_tag_pairs(value: &Value) -> Result<Vec<String>> {
+/// Parse the `tags` value for replace actions.
+/// - If regex=false: converts {"old": "new"} to ["old=new"] format
+/// - If regex=true: converts {"old": "new"} to ["old", "new"] positional pairs
+pub(crate) fn parse_replace_tag_pairs(value: &Value, regex: bool) -> Result<Vec<String>> {
     let map = match value {
         Value::Object(map) => map,
         _ => {
@@ -203,14 +201,29 @@ pub(crate) fn parse_replace_tag_pairs(value: &Value) -> Result<Vec<String>> {
         }
     };
 
-    let mut pairs = Vec::with_capacity(map.len());
-    for (k, v) in map {
-        if let Some(s) = v.as_str() {
-            pairs.push(format!("{}={}", k, s));
-        } else {
-            anyhow::bail!("'tags' object for 'replace' action must map to string values");
+    let mut pairs = Vec::with_capacity(if regex { map.len() * 2 } else { map.len() });
+
+    if regex {
+        // For regex mode, create positional pairs: [old, new, old2, new2, ...]
+        for (k, v) in map {
+            if let Some(s) = v.as_str() {
+                pairs.push(k.clone());
+                pairs.push(s.to_string());
+            } else {
+                anyhow::bail!("'tags' object for 'replace' action must map to string values");
+            }
+        }
+    } else {
+        // For non-regex mode, create old=new format
+        for (k, v) in map {
+            if let Some(s) = v.as_str() {
+                pairs.push(format!("{}={}", k, s));
+            } else {
+                anyhow::bail!("'tags' object for 'replace' action must map to string values");
+            }
         }
     }
+
     Ok(pairs)
 }
 
@@ -229,8 +242,21 @@ mod tests {
     #[test]
     fn parse_replace_tag_pairs_valid_object() {
         let value = json!({"old": "new", "foo": "bar"});
-        let mut pairs = parse_replace_tag_pairs(&value).unwrap();
+        let mut pairs = parse_replace_tag_pairs(&value, false).unwrap();
         pairs.sort();
         assert_eq!(pairs, vec!["foo=bar".to_string(), "old=new".to_string()]);
+    }
+
+    #[test]
+    fn parse_replace_tag_pairs_regex_mode() {
+        let value = json!({"test-.*": "new-test", "id-[0-9]+": "matched-id"});
+        let pairs = parse_replace_tag_pairs(&value, true).unwrap();
+        // Positional pairs should have even length
+        assert_eq!(pairs.len() % 2, 0);
+        // Should contain all keys and values
+        assert!(pairs.contains(&"test-.*".to_string()));
+        assert!(pairs.contains(&"new-test".to_string()));
+        assert!(pairs.contains(&"id-[0-9]+".to_string()));
+        assert!(pairs.contains(&"matched-id".to_string()));
     }
 }

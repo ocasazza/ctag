@@ -332,29 +332,6 @@ impl ConfluenceClient {
     }
 }
 
-// Helper function to filter excluded pages
-pub fn filter_excluded_pages(
-    pages: Vec<SearchResultItem>,
-    excluded_pages: &[SearchResultItem],
-) -> Vec<SearchResultItem> {
-    let excluded_ids: Vec<String> = excluded_pages
-        .iter()
-        .filter_map(|p| p.content.as_ref()?.id.clone())
-        .collect();
-
-    pages
-        .into_iter()
-        .filter(|page| {
-            if let Some(content) = &page.content {
-                if let Some(id) = &content.id {
-                    return !excluded_ids.contains(id);
-                }
-            }
-            true
-        })
-        .collect()
-}
-
 pub use crate::models::sanitize_text;
 
 /// Filter tags that match any of the provided regexes

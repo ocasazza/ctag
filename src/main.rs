@@ -83,11 +83,8 @@ fn main() -> Result<()> {
         Commands::FromStdinJson(args) => {
             commands::from_stdin_json::run(args, &client, cli.dry_run, cli.progress, format)?
         }
-        Commands::Get(args) => {
-            commands::get::run(args, &client, cli.dry_run, cli.progress, format)?
-        }
+        Commands::Get(args) => commands::get::run(args, &client, cli.progress, format)?,
     }
-
     Ok(())
 }
 

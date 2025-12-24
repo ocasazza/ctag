@@ -34,7 +34,7 @@ Sleep 4s
 
 Type "# Replace tags matching a numeric pattern"
 Enter
-Type "ctag replace --regex 'id = 193593345' 'id-[0-9]+=matched-id' --dry-run"
+Type "ctag replace --regex 'id = 193593345' 'id-[0-9]+' 'matched-id' --dry-run"
 Sleep 1s
 Enter
 Sleep 5s

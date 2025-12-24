@@ -1,4 +1,4 @@
-use crate::api::{filter_excluded_pages, ConfluenceClient};
+use crate::api::ConfluenceClient;
 use crate::models::sanitize_text;
 use crate::models::ProcessResults;
 use crate::ui;
@@ -9,11 +9,32 @@ use dialoguer::Confirm;
 use std::collections::HashMap;
 
 #[derive(Args)]
+#[command(after_help = "\
+EXAMPLES:
+  # Replace tags using old=new format
+  ctag replace 'space = DOCS' 'old-tag=new-tag' 'foo=bar'
+
+  # Replace tags with regex patterns (positional pairs)
+  ctag replace --regex 'space = DOCS' 'test-.*' 'new-test' 'id-[0-9]+' 'matched-id'
+
+  # Preview changes before applying
+  ctag --dry-run replace 'space = DOCS' 'old=new'
+
+  # Interactive mode with confirmation
+  ctag replace --interactive 'space = DOCS' 'draft=published'
+
+  # Multiple replacements with regex
+  ctag replace --regex 'label = migration' \\
+    'v1-.*' 'legacy' \\
+    'temp-.*' 'archived'
+")]
 pub struct ReplaceArgs {
     /// CQL expression to match pages
     pub cql_expression: String,
 
-    /// Tag pairs (old=new)
+    /// Tag pairs to replace
+    /// - Without --regex: use 'old=new' format (e.g., 'foo=bar' 'baz=qux')
+    /// - With --regex: use positional pairs (e.g., 'pattern1' 'replacement1' 'pattern2' 'replacement2')
     #[arg(required = true)]
     pub tag_pairs: Vec<String>,
 
@@ -25,38 +46,58 @@ pub struct ReplaceArgs {
     #[arg(long, default_value = "q")]
     pub abort_key: String,
 
-    /// CQL expression to match pages that should be excluded
-    #[arg(long)]
-    pub cql_exclude: Option<String>,
-
     /// Use regex to match tags
     #[arg(long)]
     pub regex: bool,
 }
 
-/// Parse CLI tag pairs like ["old=new", "foo=bar"] into a mapping.
-pub(crate) fn parse_tag_pairs(pairs: &[String]) -> Result<HashMap<String, String>> {
+/// Parse CLI tag pairs.
+/// - If regex=false: expects ["old=new", "foo=bar"] format
+/// - If regex=true: expects positional pairs ["old_regex", "new", "another_regex", "another_new"]
+pub(crate) fn parse_tag_pairs(pairs: &[String], regex: bool) -> Result<HashMap<String, String>> {
     let mut tag_mapping = HashMap::new();
 
-    for pair in pairs {
-        let parts: Vec<&str> = pair.splitn(2, '=').collect();
-        if parts.len() != 2 {
+    if regex {
+        // Positional pairs mode for regex
+        if !pairs.len().is_multiple_of(2) {
             anyhow::bail!(
-                "Invalid tag pair format: '{}'. Use format 'oldtag=newtag'",
-                pair
-            );
-        }
-        let old = parts[0].trim();
-        let new = parts[1].trim();
-
-        if old.is_empty() || new.is_empty() {
-            anyhow::bail!(
-                "Invalid tag pair format: '{}'. Old and new tags must be non-empty",
-                pair
+                "Invalid number of arguments for regex mode. Expected pairs of (old_pattern, new_tag), got {} arguments",
+                pairs.len()
             );
         }
 
-        tag_mapping.insert(old.to_string(), new.to_string());
+        for chunk in pairs.chunks(2) {
+            let old = chunk[0].trim();
+            let new = chunk[1].trim();
+
+            if old.is_empty() || new.is_empty() {
+                anyhow::bail!("Invalid tag pair: old pattern and new tag must be non-empty");
+            }
+
+            tag_mapping.insert(old.to_string(), new.to_string());
+        }
+    } else {
+        // Traditional old=new format for non-regex mode
+        for pair in pairs {
+            let parts: Vec<&str> = pair.splitn(2, '=').collect();
+            if parts.len() != 2 {
+                anyhow::bail!(
+                    "Invalid tag pair format: '{}'. Use format 'oldtag=newtag'",
+                    pair
+                );
+            }
+            let old = parts[0].trim();
+            let new = parts[1].trim();
+
+            if old.is_empty() || new.is_empty() {
+                anyhow::bail!(
+                    "Invalid tag pair format: '{}'. Old and new tags must be non-empty",
+                    pair
+                );
+            }
+
+            tag_mapping.insert(old.to_string(), new.to_string());
+        }
     }
 
     Ok(tag_mapping)
@@ -78,7 +119,7 @@ pub fn run(
     }
 
     // Parse tag pairs
-    let tag_mapping = parse_tag_pairs(&args.tag_pairs)?;
+    let tag_mapping = parse_tag_pairs(&args.tag_pairs, args.regex)?;
 
     let compiled_regexes = if args.regex {
         let mut res = Vec::new();
@@ -104,7 +145,7 @@ pub fn run(
         None
     };
 
-    let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
+    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
 
     if let Some(s) = spinner {
         s.finish_and_clear();
@@ -119,32 +160,6 @@ pub fn run(
     }
     if verbose {
         ui::print_info(&format!("Found {} matching pages.", pages.len()));
-    }
-    // Apply exclusion if specified
-    if let Some(cql_exclude) = &args.cql_exclude {
-        let spinner = if (verbose || !show_progress) && !is_structured {
-            Some(ui::create_spinner(&format!(
-                "Finding pages to exclude: {}",
-                cql_exclude
-            )))
-        } else {
-            None
-        };
-        let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
-        if let Some(s) = spinner {
-            s.finish_and_clear();
-        }
-        if !excluded_pages.is_empty() {
-            let original_count = pages.len();
-            pages = filter_excluded_pages(pages, &excluded_pages);
-            if verbose {
-                ui::print_info(&format!(
-                    "Excluded {} pages. {} pages remaining.",
-                    original_count - pages.len(),
-                    pages.len()
-                ));
-            }
-        }
     }
     if dry_run {
         ui::print_dry_run("No changes will be made.");
@@ -323,7 +338,7 @@ mod tests {
     fn parse_tag_pairs_trims_whitespace_and_parses_correctly() {
         let input = vec!["old=new".to_string(), " foo = bar ".to_string()];
 
-        let mapping = parse_tag_pairs(&input).unwrap();
+        let mapping = parse_tag_pairs(&input, false).unwrap();
         assert_eq!(mapping.get("old"), Some(&"new".to_string()));
         assert_eq!(mapping.get("foo"), Some(&"bar".to_string()));
     }
@@ -331,7 +346,7 @@ mod tests {
     #[test]
     fn parse_tag_pairs_rejects_missing_equal_sign() {
         let input = vec!["invalidpair".to_string()];
-        let err = parse_tag_pairs(&input).unwrap_err();
+        let err = parse_tag_pairs(&input, false).unwrap_err();
         let msg = format!("{}", err);
         assert!(
             msg.contains("Invalid tag pair format"),
@@ -350,12 +365,61 @@ mod tests {
         ];
 
         for s in inputs {
-            let err = parse_tag_pairs(std::slice::from_ref(&s)).unwrap_err();
+            let err = parse_tag_pairs(std::slice::from_ref(&s), false).unwrap_err();
             let msg = format!("{}", err);
             assert!(
                 msg.contains("Old and new tags must be non-empty"),
                 "unexpected error for '{}': {}",
                 s,
+                msg
+            );
+        }
+    }
+
+    #[test]
+    fn parse_tag_pairs_positional_mode_works() {
+        let input = vec![
+            "test-.*".to_string(),
+            "new-test".to_string(),
+            "id-[0-9]+".to_string(),
+            "matched-id".to_string(),
+        ];
+
+        let mapping = parse_tag_pairs(&input, true).unwrap();
+        assert_eq!(mapping.get("test-.*"), Some(&"new-test".to_string()));
+        assert_eq!(mapping.get("id-[0-9]+"), Some(&"matched-id".to_string()));
+    }
+
+    #[test]
+    fn parse_tag_pairs_positional_mode_rejects_odd_count() {
+        let input = vec![
+            "test-.*".to_string(),
+            "new-test".to_string(),
+            "orphan".to_string(),
+        ];
+
+        let err = parse_tag_pairs(&input, true).unwrap_err();
+        let msg = format!("{}", err);
+        assert!(
+            msg.contains("Invalid number of arguments"),
+            "unexpected error message: {}",
+            msg
+        );
+    }
+
+    #[test]
+    fn parse_tag_pairs_positional_mode_rejects_empty() {
+        let inputs = vec![
+            vec!["".to_string(), "new".to_string()],
+            vec!["old".to_string(), "".to_string()],
+        ];
+
+        for input in inputs {
+            let err = parse_tag_pairs(&input, true).unwrap_err();
+            let msg = format!("{}", err);
+            assert!(
+                msg.contains("must be non-empty"),
+                "unexpected error message: {}",
                 msg
             );
         }

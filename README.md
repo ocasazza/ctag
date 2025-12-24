@@ -55,7 +55,13 @@ ctag remove "space = DOCS" "test-tag-.*" --regex
 
 ```bash
 # Replace any tag matching "id-[0-9]+" with "matched-id"
-ctag replace "space = DOCS" "id-[0-9]+=matched-id" --regex
+# Note: Use positional pairs (pattern replacement pattern replacement ...)
+ctag replace --regex "space = DOCS" "id-[0-9]+" "matched-id"
+
+# Multiple replacements
+ctag replace --regex "space = DOCS" \
+  "test-.*" "new-test" \
+  "id-[0-9]+" "matched-id"
 ```
 
 ### Advanced Options
@@ -74,14 +80,6 @@ Preview changes without making modifications:
 
 ```bash
 ctag --dry-run add "space = DOCS" new-tag
-```
-
-#### Exclude pages
-
-Exclude specific pages from the operation:
-
-```bash
-ctag add "space = DOCS" new-tag --cql-exclude "title ~ 'Archive*'"
 ```
 
 ### Batch Operations
@@ -103,12 +101,20 @@ Create a JSON file with multiple commands:
     {
       "action": "replace",
       "cql_expression": "space = DOCS",
-      "tag_mapping": {
+      "tags": {
         "old-tag": "new-tag",
         "deprecated": "archived"
       },
-      "interactive": true,
-      "cql_exclude": "title ~ 'Template*'"
+      "interactive": true
+    },
+    {
+      "action": "replace",
+      "cql_expression": "space = DOCS",
+      "tags": {
+        "test-.*": "new-test",
+        "id-[0-9]+": "matched-id"
+      },
+      "regex": true
     }
   ]
 }

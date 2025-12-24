@@ -1,4 +1,4 @@
-use crate::api::{filter_excluded_pages, sanitize_text, ConfluenceClient};
+use crate::api::{sanitize_text, ConfluenceClient};
 use crate::models::OutputFormat;
 use crate::ui;
 use anyhow::Result;
@@ -11,6 +11,26 @@ use std::collections::HashSet;
 use terminal_size::{terminal_size, Width};
 
 #[derive(Args)]
+#[command(after_help = "\
+EXAMPLES:
+  # Get all pages with their tags
+  ctag get 'space = DOCS'
+
+  # Show only unique tags across all pages
+  ctag get 'space = DOCS' --tags-only
+
+  # Output as JSON
+  ctag get 'space = DOCS' --format json
+
+  # Save results to a file
+  ctag get 'space = DOCS' --output-file results.json
+
+  # Get tags from recently modified pages
+  ctag get 'space = DOCS AND lastmodified > -30d'
+
+  # Get tags in CSV format
+  ctag get 'label = migration' --format csv --output-file migration-tags.csv
+")]
 pub struct GetArgs {
     /// CQL expression to match pages
     pub cql_expression: String,
@@ -31,10 +51,6 @@ pub struct GetArgs {
     #[arg(long, default_value = "q")]
     pub abort_key: String,
 
-    /// CQL expression to match pages that should be excluded
-    #[arg(long)]
-    pub cql_exclude: Option<String>,
-
     /// Save results to file
     #[arg(long)]
     pub output_file: Option<String>,
@@ -51,7 +67,6 @@ struct PageData {
 pub fn run(
     args: GetArgs,
     client: &ConfluenceClient,
-    _dry_run: bool,
     show_progress: bool,
     format: OutputFormat,
 ) -> Result<()> {
@@ -71,7 +86,7 @@ pub fn run(
     } else {
         None
     };
-    let mut pages = client.get_all_cql_results(&args.cql_expression, 100)?;
+    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
     if let Some(s) = &spinner {
         s.finish_and_clear();
     }
@@ -86,33 +101,6 @@ pub fn run(
     }
     if verbose {
         ui::print_info(&format!("Found {} matching pages.", pages.len()));
-    }
-
-    // Apply exclusion if specified
-    if let Some(cql_exclude) = &args.cql_exclude {
-        let spinner = if (verbose || !show_progress) && !is_structured {
-            Some(ui::create_spinner(&format!(
-                "Finding pages to exclude: {}",
-                cql_exclude
-            )))
-        } else {
-            None
-        };
-        let excluded_pages = client.get_all_cql_results(cql_exclude, 100)?;
-        if let Some(s) = &spinner {
-            s.finish_and_clear();
-        }
-        if !excluded_pages.is_empty() {
-            let original_count = pages.len();
-            pages = filter_excluded_pages(pages, &excluded_pages);
-            if verbose {
-                ui::print_info(&format!(
-                    "Excluded {} pages. {} pages remaining.",
-                    original_count - pages.len(),
-                    pages.len()
-                ));
-            }
-        }
     }
 
     // Collect page data with tags
