@@ -102,26 +102,28 @@ impl ConfluenceClient {
     }
 
     /// Execute a CQL query and return matching pages
+    /// Returns (pages, next_url) where next_url is the cursor-based URL for the next page
     pub fn execute_cql_query(
         &self,
         cql_expression: &str,
-        start: usize,
         limit: usize,
-        expand: Option<&str>,
-    ) -> Result<Vec<SearchResultItem>> {
-        let expand_str = expand.unwrap_or("space,metadata.labels,version");
+        next_url: Option<&str>,
+    ) -> Result<(Vec<SearchResultItem>, Option<String>)> {
+        let _expand_str = "content.space,content.metadata.labels,content.version";
 
-        let url = format!(
-            "{}/wiki/rest/api/content/search?cql={}&start={}&limit={}&expand={}",
-            self.base_url,
-            urlencoding::encode(cql_expression),
-            start,
-            limit,
-            expand_str
-        );
+        // If we have a next_url, use it directly; otherwise build the initial URL
+        let url = if let Some(next) = next_url {
+            format!("{}/wiki{}", self.base_url, next)
+        } else {
+            format!(
+                "{}/wiki/rest/api/search?cql={}&limit={}&expand=content.space,content.metadata.labels,content.version",
+                self.base_url,
+                urlencoding::encode(cql_expression),
+                limit
+            )
+        };
 
-        info!("Executing CQL query: {}", cql_expression);
-
+        info!("Executing CQL query: {} (limit: {})", cql_expression, limit);
         let response = self
             .send_request(|| self.client.get(&url).headers(self.headers()))
             .context("Failed to execute CQL query")?;
@@ -136,8 +138,6 @@ impl ConfluenceClient {
         for item in cql_response.results {
             match serde_json::from_value::<SearchResultItem>(item.clone()) {
                 Ok(mut page) => {
-                    // If content is missing, try to deserialize the item itself as Content.
-                    // This handles endpoints that return flat Content objects (like content/search).
                     if page.content.is_none() {
                         if let Ok(c) =
                             serde_json::from_value::<crate::models::Content>(item.clone())
@@ -149,34 +149,63 @@ impl ConfluenceClient {
                 }
                 Err(e) => {
                     warn!("Failed to parse search result item: {}", e);
-                    // Try minimal parsing or constructing from flat content
                     if let Ok(c) = serde_json::from_value::<crate::models::Content>(item.clone()) {
                         let minimal = SearchResultItem {
                             title: c.title.clone(),
                             content: Some(c),
                             space: None,
-                            result_global_container: None, // We might lose this if not flattened
+                            result_global_container: None,
                         };
                         pages.push(minimal);
                     }
                 }
             }
         }
-        info!("CQL query returned {} results", pages.len());
-        Ok(pages)
+        let result_count = pages.len();
+
+        // Extract the next link for cursor-based pagination
+        let next_link = cql_response
+            .links
+            .as_ref()
+            .and_then(|links| links.get("next"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        info!(
+            "CQL query returned {} results (totalSize: {:?}, has_next: {})",
+            result_count,
+            cql_response.total_size,
+            next_link.is_some()
+        );
+        Ok((pages, next_link))
     }
 
     /// Get all results for a CQL query, handling pagination
+    /// Optional callback receives (current_count, batch_size) after each batch
     pub fn get_all_cql_results(
         &self,
         cql_expression: &str,
         batch_size: usize,
     ) -> Result<Vec<SearchResultItem>> {
+        self.get_all_cql_results_with_progress(cql_expression, batch_size, None::<fn(usize, usize)>)
+    }
+
+    /// Get all results for a CQL query with progress callback
+    pub fn get_all_cql_results_with_progress<F>(
+        &self,
+        cql_expression: &str,
+        batch_size: usize,
+        mut progress_callback: Option<F>,
+    ) -> Result<Vec<SearchResultItem>>
+    where
+        F: FnMut(usize, usize),
+    {
         let mut all_pages = Vec::new();
-        let mut start = 0;
+        let mut next_url: Option<String> = None;
 
         loop {
-            let batch = self.execute_cql_query(cql_expression, start, batch_size, None)?;
+            let (batch, next) =
+                self.execute_cql_query(cql_expression, batch_size, next_url.as_deref())?;
 
             if batch.is_empty() {
                 break;
@@ -185,11 +214,17 @@ impl ConfluenceClient {
             let batch_len = batch.len();
             all_pages.extend(batch);
 
-            if batch_len < batch_size {
+            // Call progress callback with current total
+            if let Some(ref mut callback) = progress_callback {
+                callback(all_pages.len(), batch_len);
+            }
+
+            // Break if no more pages
+            if next.is_none() {
                 break;
             }
 
-            start += batch_size;
+            next_url = next;
         }
 
         Ok(all_pages)
@@ -374,6 +409,22 @@ mod tests {
         assert!(output.contains('\t'));
         assert!(output.contains("Hello"));
         assert!(output.contains("World"));
+    }
+
+    #[test]
+    fn sanitize_text_decodes_html_entities() {
+        // Test HTML entity decoding (Confluence may return these)
+        let input = "Lock &#128274; Page"; // &#128274; is the lock emoji 🔒
+        let output = sanitize_text(input);
+        assert!(
+            output.contains("🔒"),
+            "Expected emoji in output: {}",
+            output
+        );
+        // Test named entities
+        let input2 = "Hello &amp; World";
+        let output2 = sanitize_text(input2);
+        assert!(output2.contains("&"), "Expected & in output: {}", output2);
     }
 
     #[test]

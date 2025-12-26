@@ -45,13 +45,11 @@ pub fn run(
     progress: bool,
     format: OutputFormat,
 ) -> Result<()> {
-    let verbose = format == OutputFormat::Verbose;
-    let is_structured = format == OutputFormat::Json || format == OutputFormat::Csv;
-
+    let verbose = format.is_verbose();
+    let is_structured = format.is_structured();
     if verbose {
         ui::print_header("EXECUTE FROM JSON");
     }
-
     // Read and parse JSON file
     let json_content = fs::read_to_string(&args.json_file)
         .context(format!("Failed to read JSON file: {}", args.json_file))?;

@@ -46,29 +46,18 @@ pub fn run(
     show_progress: bool,
     format: crate::models::OutputFormat,
 ) -> Result<()> {
-    let verbose = format == crate::models::OutputFormat::Verbose;
-    let is_structured =
-        format == crate::models::OutputFormat::Json || format == crate::models::OutputFormat::Csv;
-
+    let verbose = format.is_verbose();
     if verbose {
         ui::print_header("ADD TAGS");
     }
-
     // Get matching pages
-    let spinner = if (verbose || !show_progress) && !is_structured {
-        Some(ui::create_spinner(&format!(
-            "Finding pages matching: {}",
-            args.cql_expression
-        )))
-    } else {
-        None
-    };
-
-    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
-
-    if let Some(s) = spinner {
-        s.finish_and_clear();
-    }
+    let pages = crate::commands::get_matching_pages(
+        client,
+        &args.cql_expression,
+        100,
+        format,
+        show_progress,
+    )?;
 
     if pages.is_empty() {
         ui::print_warning("No pages found matching the CQL expression.");
@@ -98,30 +87,22 @@ pub fn run(
 
     // Process the pages
     let mut results = ProcessResults::new(pages.len());
-    let progress = if show_progress {
-        Some(ui::create_progress_bar(pages.len() as u64))
-    } else {
-        None
-    };
-
-    for page in &pages {
-        let page_id = match &page.content {
-            Some(content) => match &content.id {
+    if args.interactive {
+        // Interactive mode: sequential processing
+        let progress = if show_progress {
+            Some(ui::create_progress_bar(pages.len() as u64))
+        } else {
+            None
+        };
+        for page in &pages {
+            let page_id = match page.page_id() {
                 Some(id) => id,
                 None => {
                     results.skipped += 1;
                     continue;
                 }
-            },
-            None => {
-                results.skipped += 1;
-                continue;
-            }
-        };
-        let space = page.space_name();
-
-        // Interactive confirmation
-        if args.interactive {
+            };
+            let space = page.space_name();
             let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
@@ -136,19 +117,15 @@ pub fn run(
                     ui::print_substep(&format!("{}: {}", "Add".green(), tag));
                 }
             }
-
             let prompt = format!(
                 "Add tags {:?}? (Enter '{}' to abort)",
                 args.tags, args.abort_key
             );
-
-            // Suspend progress bar for interaction
             let confirmed = if let Some(pb) = &progress {
                 pb.suspend(|| Confirm::new().with_prompt(&prompt).interact())
             } else {
                 Confirm::new().with_prompt(&prompt).interact()
             };
-
             match confirmed {
                 Ok(true) => {}
                 Ok(false) => {
@@ -163,23 +140,37 @@ pub fn run(
                     break;
                 }
             }
+            let success = client.add_tags(page_id, &args.tags);
+            results.processed += 1;
+            if success {
+                results.success += 1;
+                results.tags_added += args.tags.len();
+            } else {
+                results.failed += 1;
+            }
+            if let Some(pb) = &progress {
+                pb.inc(1);
+            }
         }
-
-        // Perform the action
-        let success = client.add_tags(page_id, &args.tags);
-        results.processed += 1;
-        if success {
-            results.success += 1;
-        } else {
-            results.failed += 1;
+        if let Some(pb) = progress {
+            pb.finish_with_message("Done");
         }
-        if let Some(pb) = &progress {
-            pb.inc(1);
-        }
-    }
-
-    if let Some(pb) = progress {
-        pb.finish_with_message("Done");
+    } else {
+        // Non-interactive mode: parallel processing
+        results = crate::commands::process_pages_parallel(&pages, show_progress, |page| {
+            let page_id = match page.page_id() {
+                Some(id) => id,
+                None => return crate::commands::ActionResult::Skipped,
+            };
+            if client.add_tags(page_id, &args.tags) {
+                crate::commands::ActionResult::Success {
+                    added: args.tags.len(),
+                    removed: 0,
+                }
+            } else {
+                crate::commands::ActionResult::Failed
+            }
+        });
     }
 
     // Display results

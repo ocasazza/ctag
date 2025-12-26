@@ -53,9 +53,7 @@ pub fn run(
     show_progress: bool,
     format: crate::models::OutputFormat,
 ) -> Result<()> {
-    let verbose = format == crate::models::OutputFormat::Verbose;
-    let is_structured =
-        format == crate::models::OutputFormat::Json || format == crate::models::OutputFormat::Csv;
+    let verbose = format.is_verbose();
 
     let compiled_regexes = if args.regex {
         let mut res = Vec::new();
@@ -75,20 +73,13 @@ pub fn run(
     }
 
     // Get matching pages
-    let spinner = if (verbose || !show_progress) && !is_structured {
-        Some(ui::create_spinner(&format!(
-            "Finding pages matching: {}",
-            args.cql_expression
-        )))
-    } else {
-        None
-    };
-
-    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
-
-    if let Some(s) = spinner {
-        s.finish_and_clear();
-    }
+    let pages = crate::commands::get_matching_pages(
+        client,
+        &args.cql_expression,
+        100,
+        format,
+        show_progress,
+    )?;
 
     if pages.is_empty() {
         ui::print_warning("No pages found matching the CQL expression.");
@@ -105,11 +96,8 @@ pub fn run(
     if dry_run {
         ui::print_dry_run("No changes will be made.");
         for page in &pages {
-            let page_id = match &page.content {
-                Some(content) => match &content.id {
-                    Some(id) => id,
-                    None => continue,
-                },
+            let page_id = match page.page_id() {
+                Some(id) => id,
                 None => continue,
             };
 
@@ -144,46 +132,41 @@ pub fn run(
 
     // Process the pages
     let mut results = ProcessResults::new(pages.len());
-    let progress = if show_progress {
-        Some(ui::create_progress_bar(pages.len() as u64))
-    } else {
-        None
-    };
 
-    for page in &pages {
-        let page_id = match &page.content {
-            Some(content) => match &content.id {
+    if args.interactive {
+        // Interactive mode: sequential processing
+        let progress = if show_progress {
+            Some(ui::create_progress_bar(pages.len() as u64))
+        } else {
+            None
+        };
+
+        for page in &pages {
+            let page_id = match page.page_id() {
                 Some(id) => id,
                 None => {
                     results.skipped += 1;
                     continue;
                 }
-            },
-            None => {
+            };
+
+            let space = page.space_name();
+
+            let tags_to_remove = if let Some(regexes) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id)?;
+                crate::api::filter_tags_by_regex(current_tags, regexes)
+            } else {
+                args.tags.clone()
+            };
+
+            if tags_to_remove.is_empty() && args.regex {
                 results.skipped += 1;
+                if let Some(pb) = &progress {
+                    pb.inc(1);
+                }
                 continue;
             }
-        };
 
-        let space = page.space_name();
-
-        let tags_to_remove = if let Some(regexes) = &compiled_regexes {
-            let current_tags = client.get_page_tags(page_id)?;
-            crate::api::filter_tags_by_regex(current_tags, regexes)
-        } else {
-            args.tags.clone()
-        };
-
-        if tags_to_remove.is_empty() && args.regex {
-            results.skipped += 1;
-            if let Some(pb) = &progress {
-                pb.inc(1);
-            }
-            continue;
-        }
-
-        // Interactive confirmation
-        if args.interactive {
             let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
@@ -224,25 +207,53 @@ pub fn run(
                     break;
                 }
             }
+
+            let success = client.remove_tags(page_id, &tags_to_remove);
+            results.processed += 1;
+
+            if success {
+                results.success += 1;
+                results.tags_removed += tags_to_remove.len();
+            } else {
+                results.failed += 1;
+            }
+
+            if let Some(pb) = &progress {
+                pb.inc(1);
+            }
         }
 
-        // Perform the action
-        let success = client.remove_tags(page_id, &tags_to_remove);
-        results.processed += 1;
-
-        if success {
-            results.success += 1;
-        } else {
-            results.failed += 1;
+        if let Some(pb) = progress {
+            pb.finish_with_message("Done");
         }
+    } else {
+        // Non-interactive mode: parallel processing
+        results = crate::commands::process_pages_parallel(&pages, show_progress, |page| {
+            let page_id = match page.page_id() {
+                Some(id) => id,
+                None => return crate::commands::ActionResult::Skipped,
+            };
 
-        if let Some(pb) = &progress {
-            pb.inc(1);
-        }
-    }
+            let tags_to_remove = if let Some(regexes) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id).unwrap_or_default();
+                crate::api::filter_tags_by_regex(current_tags, regexes)
+            } else {
+                args.tags.clone()
+            };
 
-    if let Some(pb) = progress {
-        pb.finish_with_message("Done");
+            if tags_to_remove.is_empty() && args.regex {
+                return crate::commands::ActionResult::Skipped;
+            }
+
+            if client.remove_tags(page_id, &tags_to_remove) {
+                crate::commands::ActionResult::Success {
+                    added: 0,
+                    removed: tags_to_remove.len(),
+                }
+            } else {
+                crate::commands::ActionResult::Failed
+            }
+        });
     }
 
     // Display results

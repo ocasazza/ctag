@@ -52,11 +52,11 @@ pub struct ReplaceArgs {
 }
 
 /// Parse CLI tag pairs.
+/// TODO: regex=false should accept the same input format as regex=true
 /// - If regex=false: expects ["old=new", "foo=bar"] format
 /// - If regex=true: expects positional pairs ["old_regex", "new", "another_regex", "another_new"]
 pub(crate) fn parse_tag_pairs(pairs: &[String], regex: bool) -> Result<HashMap<String, String>> {
     let mut tag_mapping = HashMap::new();
-
     if regex {
         // Positional pairs mode for regex
         if !pairs.len().is_multiple_of(2) {
@@ -65,15 +65,12 @@ pub(crate) fn parse_tag_pairs(pairs: &[String], regex: bool) -> Result<HashMap<S
                 pairs.len()
             );
         }
-
         for chunk in pairs.chunks(2) {
             let old = chunk[0].trim();
             let new = chunk[1].trim();
-
             if old.is_empty() || new.is_empty() {
                 anyhow::bail!("Invalid tag pair: old pattern and new tag must be non-empty");
             }
-
             tag_mapping.insert(old.to_string(), new.to_string());
         }
     } else {
@@ -110,17 +107,12 @@ pub fn run(
     show_progress: bool,
     format: crate::models::OutputFormat,
 ) -> Result<()> {
-    let verbose = format == crate::models::OutputFormat::Verbose;
-    let is_structured =
-        format == crate::models::OutputFormat::Json || format == crate::models::OutputFormat::Csv;
-
+    let verbose = format.is_verbose();
     if verbose {
         ui::print_header("REPLACE TAGS");
     }
-
     // Parse tag pairs
     let tag_mapping = parse_tag_pairs(&args.tag_pairs, args.regex)?;
-
     let compiled_regexes = if args.regex {
         let mut res = Vec::new();
         for (old, new) in &tag_mapping {
@@ -136,20 +128,13 @@ pub fn run(
     };
 
     // Get matching pages
-    let spinner = if (verbose || !show_progress) && !is_structured {
-        Some(ui::create_spinner(&format!(
-            "Finding pages matching: {}",
-            args.cql_expression
-        )))
-    } else {
-        None
-    };
-
-    let pages = client.get_all_cql_results(&args.cql_expression, 100)?;
-
-    if let Some(s) = spinner {
-        s.finish_and_clear();
-    }
+    let pages = crate::commands::get_matching_pages(
+        client,
+        &args.cql_expression,
+        100,
+        format,
+        show_progress,
+    )?;
 
     if pages.is_empty() {
         ui::print_warning("No pages found matching the CQL expression.");
@@ -164,11 +149,8 @@ pub fn run(
     if dry_run {
         ui::print_dry_run("No changes will be made.");
         for page in &pages {
-            let page_id = match &page.content {
-                Some(content) => match &content.id {
-                    Some(id) => id,
-                    None => continue,
-                },
+            let page_id = match page.page_id() {
+                Some(id) => id,
                 None => continue,
             };
 
@@ -206,49 +188,38 @@ pub fn run(
         }
         return Ok(());
     }
-
     // Process the pages
     let mut results = ProcessResults::new(pages.len());
-    let progress = if show_progress {
-        Some(ui::create_progress_bar(pages.len() as u64))
-    } else {
-        None
-    };
-
-    for page in &pages {
-        let page_id = match &page.content {
-            Some(content) => match &content.id {
+    if args.interactive {
+        // Interactive mode: sequential processing
+        let progress = if show_progress {
+            Some(ui::create_progress_bar(pages.len() as u64))
+        } else {
+            None
+        };
+        for page in &pages {
+            let page_id = match page.page_id() {
                 Some(id) => id,
                 None => {
                     results.skipped += 1;
                     continue;
                 }
-            },
-            None => {
+            };
+
+            let space = page.space_name();
+            let replacements = if let Some(regex_pairs) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id)?;
+                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+            } else {
+                tag_mapping.clone()
+            };
+            if replacements.is_empty() && args.regex {
                 results.skipped += 1;
+                if let Some(pb) = &progress {
+                    pb.inc(1);
+                }
                 continue;
             }
-        };
-
-        let space = page.space_name();
-
-        let replacements = if let Some(regex_pairs) = &compiled_regexes {
-            let current_tags = client.get_page_tags(page_id)?;
-            crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
-        } else {
-            tag_mapping.clone()
-        };
-
-        if replacements.is_empty() && args.regex {
-            results.skipped += 1;
-            if let Some(pb) = &progress {
-                pb.inc(1);
-            }
-            continue;
-        }
-
-        // Interactive confirmation
-        if args.interactive {
             let display_title = page.printable_clickable_title(client.base_url());
             if let Some(pb) = &progress {
                 pb.suspend(|| {
@@ -275,20 +246,17 @@ pub fn run(
                     ));
                 }
             }
-
             let old_tags: Vec<_> = replacements.keys().collect();
             let new_tags: Vec<_> = replacements.values().collect();
             let prompt = format!(
                 "Replace tags {:?} with {:?}? (Enter '{}' to abort)",
                 old_tags, new_tags, args.abort_key
             );
-
             let confirmed = if let Some(pb) = &progress {
                 pb.suspend(|| Confirm::new().with_prompt(&prompt).interact())
             } else {
                 Confirm::new().with_prompt(&prompt).interact()
             };
-
             match confirmed {
                 Ok(true) => {}
                 Ok(false) => {
@@ -303,30 +271,55 @@ pub fn run(
                     break;
                 }
             }
+            let success = client.replace_tags(page_id, &replacements);
+            results.processed += 1;
+            if success {
+                results.success += 1;
+                use std::collections::HashSet;
+                results.tags_removed += replacements.len();
+                results.tags_added += replacements.values().collect::<HashSet<_>>().len();
+            } else {
+                results.failed += 1;
+            }
+            if let Some(pb) = &progress {
+                pb.inc(1);
+            }
         }
-
-        // Perform the action
-        let success = client.replace_tags(page_id, &replacements);
-        results.processed += 1;
-
-        if success {
-            results.success += 1;
-        } else {
-            results.failed += 1;
+        if let Some(pb) = progress {
+            pb.finish_with_message("Done");
         }
+    } else {
+        // Non-interactive mode: parallel processing
+        results = crate::commands::process_pages_parallel(&pages, show_progress, |page| {
+            let page_id = match page.page_id() {
+                Some(id) => id,
+                None => return crate::commands::ActionResult::Skipped,
+            };
 
-        if let Some(pb) = &progress {
-            pb.inc(1);
-        }
+            let replacements = if let Some(regex_pairs) = &compiled_regexes {
+                let current_tags = client.get_page_tags(page_id).unwrap_or_default();
+                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+            } else {
+                tag_mapping.clone()
+            };
+
+            if replacements.is_empty() && args.regex {
+                return crate::commands::ActionResult::Skipped;
+            }
+
+            if client.replace_tags(page_id, &replacements) {
+                use std::collections::HashSet;
+                let removed = replacements.len();
+                let added = replacements.values().collect::<HashSet<_>>().len();
+
+                crate::commands::ActionResult::Success { added, removed }
+            } else {
+                crate::commands::ActionResult::Failed
+            }
+        });
     }
-
-    if let Some(pb) = progress {
-        pb.finish_with_message("Done");
-    }
-
     // Display results
     ui::print_summary(&results, format);
-
     Ok(())
 }
 
@@ -337,7 +330,6 @@ mod tests {
     #[test]
     fn parse_tag_pairs_trims_whitespace_and_parses_correctly() {
         let input = vec!["old=new".to_string(), " foo = bar ".to_string()];
-
         let mapping = parse_tag_pairs(&input, false).unwrap();
         assert_eq!(mapping.get("old"), Some(&"new".to_string()));
         assert_eq!(mapping.get("foo"), Some(&"bar".to_string()));
@@ -384,7 +376,6 @@ mod tests {
             "id-[0-9]+".to_string(),
             "matched-id".to_string(),
         ];
-
         let mapping = parse_tag_pairs(&input, true).unwrap();
         assert_eq!(mapping.get("test-.*"), Some(&"new-test".to_string()));
         assert_eq!(mapping.get("id-[0-9]+"), Some(&"matched-id".to_string()));
@@ -397,7 +388,6 @@ mod tests {
             "new-test".to_string(),
             "orphan".to_string(),
         ];
-
         let err = parse_tag_pairs(&input, true).unwrap_err();
         let msg = format!("{}", err);
         assert!(

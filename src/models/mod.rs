@@ -8,6 +8,18 @@ pub enum OutputFormat {
     Csv,
 }
 
+impl OutputFormat {
+    /// Check if format is verbose (detailed human-readable output)
+    pub fn is_verbose(&self) -> bool {
+        *self == OutputFormat::Verbose
+    }
+
+    /// Check if format is structured (JSON or CSV - machine readable)
+    pub fn is_structured(&self) -> bool {
+        *self == OutputFormat::Json || *self == OutputFormat::Csv
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResultItem {
     pub content: Option<Content>,
@@ -52,10 +64,21 @@ impl SearchResultItem {
     }
 }
 
+/// Sanitize text by decoding HTML entities and removing control characters (except whitespace)
 pub fn sanitize_text(text: &str) -> String {
-    text.chars()
+    // First decode HTML entities (e.g., &#128274; -> 🔒)
+    let decoded = html_escape::decode_html_entities(text);
+    // Then filter control characters but keep whitespace
+    decoded
+        .chars()
         .filter(|c| !c.is_control() || c.is_whitespace())
         .collect()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Ancestor {
+    pub id: Option<String>,
+    pub title: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +89,8 @@ pub struct Content {
     pub content_type: Option<String>,
     pub status: Option<String>,
     pub space: Option<Space>,
+    #[serde(default)]
+    pub ancestors: Vec<Ancestor>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,6 +111,10 @@ pub struct CqlResponse {
     pub start: Option<i32>,
     pub limit: Option<i32>,
     pub size: Option<i32>,
+    #[serde(rename = "totalSize")]
+    pub total_size: Option<i32>,
+    #[serde(rename = "_links")]
+    pub links: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,6 +136,10 @@ pub struct ProcessResults {
     pub success: usize,
     pub failed: usize,
     pub aborted: bool,
+    #[serde(default)]
+    pub tags_added: usize,
+    #[serde(default)]
+    pub tags_removed: usize,
 }
 
 impl ProcessResults {
@@ -118,6 +151,8 @@ impl ProcessResults {
             success: 0,
             failed: 0,
             aborted: false,
+            tags_added: 0,
+            tags_removed: 0,
         }
     }
 }
@@ -135,5 +170,7 @@ mod tests {
         assert_eq!(pr.success, 0);
         assert_eq!(pr.failed, 0);
         assert!(!pr.aborted);
+        assert_eq!(pr.tags_added, 0);
+        assert_eq!(pr.tags_removed, 0);
     }
 }
