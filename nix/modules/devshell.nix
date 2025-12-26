@@ -21,10 +21,21 @@
           omnix
           asciinema
           vhs
+          nushell
           (writeShellScriptBin "ctag" ''
             exec cargo run --quiet -- "$@"
           '')
         ];
+      };
+
+      devShells.nu = pkgs.mkShell {
+        name = "ctag-nu";
+        inputsFrom = [ self'.devShells.default ];
+        shellHook = ''
+          echo "🚀 Welcome to the ctag Nushell environment!"
+          echo "💡 Tip: Run 'use nu/ctag.nu' to load the integration."
+          exec nu
+        '';
       };
     };
 }

@@ -35,7 +35,7 @@ pub struct GetArgs {
     pub cql_expression: String,
 
     /// Include page titles and spaces in output
-    #[arg(long, default_value_t = true)]
+    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub show_pages: bool,
 
     /// Show only unique tags across all pages

@@ -1,8 +1,141 @@
-# CQL (Confluence Query Language) Examples
+# ctag Usage
 
-This document provides examples of CQL expressions that can be used with the tag management CLI.
 
-## Basic CQL Syntax
+## Usage
+
+### Basic Commands
+
+#### Add tags to pages
+
+```bash
+ctag add "space = DOCS" tag1 tag2 tag3
+```
+
+#### Remove tags from pages
+
+```bash
+ctag remove "space = DOCS" old-tag
+```
+
+#### Replace tags
+
+```bash
+ctag replace "space = DOCS" old-tag=new-tag another-old=another-new
+```
+
+#### Get tags from pages
+
+```bash
+# Show all pages with their tags
+ctag get "space = DOCS"
+
+# Show only unique tags
+ctag get "space = DOCS" --tags-only
+
+# Output as JSON
+ctag get "space = DOCS" --format json
+
+# Save to file
+ctag get "space = DOCS" --output-file results.json
+```
+
+### Regular Expression Support
+
+#### Remove tags by pattern
+
+```bash
+# Remove all tags starting with "test-tag-"
+ctag remove "space = DOCS" "test-tag-.*" --regex
+```
+
+#### Replace tags by pattern
+
+```bash
+# Replace any tag matching "id-[0-9]+" with "matched-id"
+# Note: Use positional pairs (pattern replacement pattern replacement ...)
+ctag replace --regex "space = DOCS" "id-[0-9]+" "matched-id"
+
+# Multiple replacements
+ctag replace --regex "space = DOCS" \
+  "test-.*" "new-test" \
+  "id-[0-9]+" "matched-id"
+```
+
+### Advanced Options
+
+#### Interactive mode
+
+Confirm each action before execution:
+
+```bash
+ctag add "space = DOCS" new-tag --interactive
+```
+
+#### Dry run
+
+Preview changes without making modifications:
+
+```bash
+ctag --dry-run add "space = DOCS" new-tag
+```
+
+### Batch Operations
+
+#### From JSON file
+
+Create a JSON file with multiple commands:
+
+```json
+{
+  "description": "Quarterly tag updates",
+  "commands": [
+    {
+      "action": "add",
+      "cql_expression": "space = DOCS AND lastmodified > -30d",
+      "tags": ["recent", "q4-2024"],
+      "interactive": false
+    },
+    {
+      "action": "replace",
+      "cql_expression": "space = DOCS",
+      "tags": {
+        "old-tag": "new-tag",
+        "deprecated": "archived"
+      },
+      "interactive": true
+    },
+    {
+      "action": "replace",
+      "cql_expression": "space = DOCS",
+      "tags": {
+        "test-.*": "new-test",
+        "id-[0-9]+": "matched-id"
+      },
+      "regex": true
+    }
+  ]
+}
+```
+
+Execute the commands:
+
+```bash
+ctag from-json commands.json
+```
+
+#### From stdin
+
+```bash
+cat commands.json | ctag from-stdin-json
+```
+
+Or:
+
+```bash
+echo '{"commands":[{"action":"add","cql_expression":"space = DOCS","tags":["test"]}]}' | ctag from-stdin-json
+```
+
+## CQL Query
 
 CQL (Confluence Query Language) is a query language used to search for content in Confluence. It's similar to SQL but designed specifically for Confluence content.
 
