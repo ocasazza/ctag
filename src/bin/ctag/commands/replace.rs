@@ -1,10 +1,10 @@
-use crate::api::ConfluenceClient;
-use crate::models::sanitize_text;
-use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
 use colored::Colorize;
+use ctag::api::ConfluenceClient;
+use ctag::models::sanitize_text;
+use ctag::models::ProcessResults;
 use dialoguer::Confirm;
 use std::collections::HashMap;
 
@@ -105,7 +105,7 @@ pub fn run(
     client: &ConfluenceClient,
     dry_run: bool,
     show_progress: bool,
-    format: crate::models::OutputFormat,
+    format: ctag::models::OutputFormat,
 ) -> Result<()> {
     let verbose = format.is_verbose();
     if verbose {
@@ -153,13 +153,11 @@ pub fn run(
                 Some(id) => id,
                 None => continue,
             };
-
             let title = page.title.as_deref().unwrap_or("Unknown");
             let space = page.space_name();
-
             let replacements = if let Some(regex_pairs) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id)?;
-                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+                ctag::api::compute_replacements_by_regex(current_tags, regex_pairs)
             } else {
                 tag_mapping.clone()
             };
@@ -209,7 +207,7 @@ pub fn run(
             let space = page.space_name();
             let replacements = if let Some(regex_pairs) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id)?;
-                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+                ctag::api::compute_replacements_by_regex(current_tags, regex_pairs)
             } else {
                 tag_mapping.clone()
             };
@@ -298,7 +296,7 @@ pub fn run(
 
             let replacements = if let Some(regex_pairs) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id).unwrap_or_default();
-                crate::api::compute_replacements_by_regex(current_tags, regex_pairs)
+                ctag::api::compute_replacements_by_regex(current_tags, regex_pairs)
             } else {
                 tag_mapping.clone()
             };
@@ -309,10 +307,23 @@ pub fn run(
 
             if client.replace_tags(page_id, &replacements) {
                 use std::collections::HashSet;
-                let removed = replacements.len();
-                let added = replacements.values().collect::<HashSet<_>>().len();
+                let removed_count = replacements.len();
+                let added_count = replacements.values().collect::<HashSet<_>>().len();
 
-                crate::commands::ActionResult::Success { added, removed }
+                let detail = ctag::models::ActionDetail {
+                    page_id: page_id.to_string(),
+                    title: page.title.as_deref().unwrap_or("Unknown").to_string(),
+                    space: page.space_name().to_string(),
+                    url: page.printable_clickable_title(client.base_url()), // This has escape codes but is what we have for now. Ideally plain URL.
+                    tags_added: replacements.values().cloned().collect(),
+                    tags_removed: replacements.keys().cloned().collect(),
+                };
+
+                crate::commands::ActionResult::Success {
+                    added: added_count,
+                    removed: removed_count,
+                    detail: Some(detail),
+                }
             } else {
                 crate::commands::ActionResult::Failed
             }

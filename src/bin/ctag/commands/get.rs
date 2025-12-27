@@ -1,11 +1,11 @@
-use crate::api::{sanitize_text, ConfluenceClient};
-use crate::models::OutputFormat;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Attribute, Cell, Color, Table};
+use ctag::api::{sanitize_text, ConfluenceClient};
+use ctag::models::OutputFormat;
 use serde::Serialize;
 use std::collections::HashSet;
 
@@ -63,6 +63,7 @@ struct PageData {
     tags: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     ancestors: Vec<String>,
+    url: String,
 }
 
 pub fn run(
@@ -126,6 +127,12 @@ pub fn run(
                 .map(|t| sanitize_text(&t))
                 .collect();
 
+            let url = format!(
+                "{}/wiki/pages/viewpage.action?pageId={}",
+                client.base_url().trim_end_matches('/'),
+                page_id
+            );
+
             // Update progress
             let count = progress_counter.fetch_add(1, Ordering::Relaxed);
             if let Some(ref p) = progress {
@@ -137,6 +144,7 @@ pub fn run(
                 space,
                 tags,
                 ancestors,
+                url,
             })
         })
         .collect();
@@ -244,6 +252,7 @@ fn format_page_data(
                     path: String,
                     space: &'a str,
                     tags: String,
+                    url: &'a str,
                 }
 
                 for page in page_data {
@@ -253,6 +262,7 @@ fn format_page_data(
                         path,
                         space: &page.space,
                         tags: page.tags.join(", "),
+                        url: &page.url,
                     })
                     .unwrap();
                 }
@@ -526,6 +536,7 @@ mod tests {
                 space: "DOCS".to_string(),
                 tags: vec!["z-tag".to_string()],
                 ancestors: vec![],
+                url: "http://example.com/2".to_string(),
             },
             PageData {
                 id: "1".to_string(),
@@ -533,6 +544,7 @@ mod tests {
                 space: "DOCS".to_string(),
                 tags: vec!["a-tag".to_string()],
                 ancestors: vec![],
+                url: "http://example.com/1".to_string(),
             },
         ];
         let output = format_as_paths(&pages, "https://example.atlassian.net");
@@ -550,6 +562,7 @@ mod tests {
             space: "MYSPACE".to_string(),
             tags: vec!["tag1".to_string()],
             ancestors: vec![],
+            url: "http://example.com/123".to_string(),
         }];
         let output = format_as_tree(&pages, "https://example.atlassian.net");
         // Should contain the space name and page
@@ -567,6 +580,7 @@ mod tests {
                 space: "DOCS".to_string(),
                 tags: vec!["child-tag".to_string()],
                 ancestors: vec!["ParentPage".to_string()],
+                url: "http://example.com/1".to_string(),
             },
             PageData {
                 id: "2".to_string(),
@@ -574,6 +588,7 @@ mod tests {
                 space: "DOCS".to_string(),
                 tags: vec!["parent-tag".to_string()],
                 ancestors: vec![],
+                url: "http://example.com/2".to_string(),
             },
         ];
         let output = format_as_tree(&pages, "https://example.atlassian.net");
@@ -593,6 +608,7 @@ mod tests {
             space: "MYSPACE".to_string(),
             tags: vec!["important".to_string()],
             ancestors: vec!["Level1".to_string(), "Level2".to_string()],
+            url: "http://example.com/123".to_string(),
         }];
         let output = format_page_data(&pages, &OutputFormat::Simple, true, "https://example.com");
         // Simple mode should show path format
@@ -608,6 +624,7 @@ mod tests {
             space: "MYSPACE".to_string(),
             tags: vec!["tag1".to_string()],
             ancestors: vec!["Parent".to_string()],
+            url: "http://example.com/123".to_string(),
         }];
         let output = format_page_data(&pages, &OutputFormat::Json, true, "https://example.com");
         let parsed: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap();
@@ -623,6 +640,7 @@ mod tests {
             space: "MYSPACE".to_string(),
             tags: vec!["tag1".to_string()],
             ancestors: vec!["Parent".to_string()],
+            url: "http://example.com/123".to_string(),
         }];
         let output = format_page_data(&pages, &OutputFormat::Csv, true, "https://example.com");
         // CSV should have path column

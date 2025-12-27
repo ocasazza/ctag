@@ -5,10 +5,10 @@ pub mod get;
 pub mod remove;
 pub mod replace;
 
-use crate::api::ConfluenceClient;
-use crate::models::{OutputFormat, SearchResultItem};
 use crate::ui;
 use anyhow::Result;
+use ctag::api::ConfluenceClient;
+use ctag::models::{OutputFormat, SearchResultItem};
 
 /// Shared logic to fetch pages with a spinner progress matching various settings
 pub fn get_matching_pages(
@@ -50,7 +50,11 @@ pub fn get_matching_pages(
 }
 
 pub enum ActionResult {
-    Success { added: usize, removed: usize },
+    Success {
+        added: usize,
+        removed: usize,
+        detail: Option<ctag::models::ActionDetail>,
+    },
     Failed,
     Skipped,
 }
@@ -60,12 +64,13 @@ pub fn process_pages_parallel<F>(
     pages: &[SearchResultItem],
     show_progress: bool,
     action: F,
-) -> crate::models::ProcessResults
+) -> ctag::models::ProcessResults
 where
     F: Fn(&SearchResultItem) -> ActionResult + Sync + Send,
 {
     use rayon::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
 
     let progress = if show_progress {
         Some(ui::create_progress_bar(pages.len() as u64))
@@ -78,13 +83,23 @@ where
     let skipped_count = AtomicUsize::new(0);
     let added_count = AtomicUsize::new(0);
     let removed_count = AtomicUsize::new(0);
+    let details = Mutex::new(Vec::new());
 
     pages.par_iter().for_each(|page| {
         match action(page) {
-            ActionResult::Success { added, removed } => {
+            ActionResult::Success {
+                added,
+                removed,
+                detail,
+            } => {
                 success_count.fetch_add(1, Ordering::Relaxed);
                 added_count.fetch_add(added, Ordering::Relaxed);
                 removed_count.fetch_add(removed, Ordering::Relaxed);
+                if let Some(d) = detail {
+                    if let Ok(mut g) = details.lock() {
+                        g.push(d);
+                    }
+                }
             }
             ActionResult::Failed => {
                 failed_count.fetch_add(1, Ordering::Relaxed);
@@ -103,14 +118,15 @@ where
         p.finish_with_message("Done");
     }
 
-    crate::models::ProcessResults {
+    ctag::models::ProcessResults {
         total: pages.len(),
-        processed: pages.len(), // We iterate all, arguably processed includes skipped? The original code set processed = pages.len()
+        processed: pages.len(),
         skipped: skipped_count.load(Ordering::Relaxed),
         success: success_count.load(Ordering::Relaxed),
         failed: failed_count.load(Ordering::Relaxed),
         aborted: false,
         tags_added: added_count.load(Ordering::Relaxed),
         tags_removed: removed_count.load(Ordering::Relaxed),
+        details: details.into_inner().unwrap_or_default(),
     }
 }

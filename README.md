@@ -14,10 +14,10 @@ See [./docs/usage.md ](./docs/usage.md) for usage instructions.
 
 This project uses Nix for reproducible development environments.
 
-*   **Default**: `nix develop`
+*   **Default (Nushell)**: `nix develop`
+    Pre-configured environment that automatically loads the `ctag` Nushell module. (see `docs/nu.md`).
+*   **Bash**: `nix develop .#bash`
     Standard Rust environment with `cargo`, `rustc`, and build dependencies.
-*   **Nushell**: `nix develop .#nu`
-    Pre-configured environment with Nushell and `ctag` helpers available (see `docs/nu.md`).
 
 ### Run tests
 

@@ -19,22 +19,53 @@ Type "clear"
 Enter
 Show
 
+Type "# Setup Environment"
+Enter
+Type "nix develop .#nu"
+Enter
+Sleep 3s
+
 Type "# View current tags"
+Enter
+Type "ctag get 'id = 193593345'"
+Enter
+Sleep 5s
+
+Type "# Add a few tags to a page"
+Enter
+Type "ctag add 'id = 193593345' 'test-tag-1' 'test-tag-2' 'test-tag-3' 'test-tag-foo'"
+Sleep 1s
+Enter
+Sleep 1s
+
+Type "# Show the new tags"
 Enter
 Type "ctag get 'id = 193593345'"
 Enter
 Sleep 3s
 
-Type "# Remove tags matching 'test-tag-.*'"
+Type "# Replace tags using the regex pattern 'test-tag-\d*'"
 Enter
-Type "ctag remove --regex 'id = 193593345' 'test-tag-.*' --dry-run"
+Type "ctag replace --regex 'id = 193593345' 'test-tag-\d*'" 'test-tag-bar'
 Sleep 1s
 Enter
-Sleep 4s
+Sleep 1s
 
-Type "# Replace tags matching a numeric pattern"
+Type "# Show the tags we replaced"
 Enter
-Type "ctag replace --regex 'id = 193593345' 'id-[0-9]+' 'matched-id' --dry-run"
+Type "ctag get 'id = 193593345'"
+Enter
+Sleep 3s
+
+Type "# Remove all the tags we added using the regex pattern 'test-.*'"
+Enter
+Type "ctag remove --regex 'id = 193593345' 'test-.*'
 Sleep 1s
+Enter
+Sleep 1s
+
+Type "# Show the tags we removed"
+Enter
+Type "ctag get 'id = 193593345'"
 Enter
 Sleep 5s

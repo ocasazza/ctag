@@ -3,69 +3,49 @@
 #   use nu/ctag.nu
 #   ctag get "space = DOCS"
 
-# Helper to run ctag and parse JSON
-def run-ctag [cmd: string, args: list<string>, flags: record] {
-    let json_flag = ["--format", "json"]
-    let dry_run_flag = if ($flags.dry_run? | default false) { ["--dry-run"] } else { [] }
-
-    # We use ^ctag to ensure we call the external binary
-    ^ctag $cmd ...$args ...$json_flag ...$dry_run_flag | from json
+# Helper to format any ctag JSON output
+def format-output [] {
+    let results = $in
+    # Check if 'details' column exists and is not empty
+    if ('details' in ($results | columns)) and ($results.details | is-not-empty) {
+        $results.details
+        | update tags_added {|row| if ($row.tags_added | is-empty) { '[]' } else { $row.tags_added } }
+        | update tags_removed {|row| if ($row.tags_removed | is-empty) { '[]' } else { $row.tags_removed } }
+        | reject -o url page_id
+    } else if ('total' in ($results | columns)) and ($results.total | is-not-empty) {
+        # It's a summary result
+         $results | reject -o details
+    } else {
+        # It's likely a list of pages (get command)
+        $results | update title {|row|
+            let url = ($row.url?)
+            if ($url | is-empty) {
+                $row.title
+            } else {
+                 # OSC 8 Hyperlink: <OSC>8;;<URL><ST><TEXT><OSC>8;;<ST>
+                 # We use raw escape sequences because 'ansi link' isn't standard in all nu versions yet or simply constructing the string is robust.
+                 # \e is \u{1b}
+                 $"\u{1b}]8;;($url)\u{1b}\\($row.title)\u{1b}]8;;\u{1b}\\"
+            }
+        } | update tags {|row|
+            # Return null for empty lists to show a blank cell instead of [list 0 items]
+            if ($row.tags | is-empty) { '[]' } else { $row.tags }
+        } | reject -o url id
+    }
 }
 
-export def get [
-    query: string
-    --tags-only (-t)
-    --no-pages
-] {
-    let show_pages_arg = if $no_pages { "false" } else { "true" }
-    let tags_only_flag = if $tags_only { ["--tags-only"] } else { [] }
+# Main generic wrapper
+# This forwards all arguments to ctag-cli, ensuring we never have to manually update
+# the wrapper when adding new flags or commands to the Rust binary.
+export def --wrapped main [...args] {
+    let input = $in
+    let subcmd = ($args | get 0? | default "")
 
-    # Ensure show-pages can be set.
-    # Note: Requires ctag to accept --show-pages=false or separate flag
-    # process show-pages as string to ensure it's passed if logic allows
+    let raw_output = if $subcmd == "from-stdin-json" {
+        $input | to json | ^ctag-cli ...$args --format json
+    } else {
+        ^ctag-cli ...$args --format json
+    }
 
-    ^ctag get $query --format json --show-pages $show_pages_arg ...$tags_only_flag | from json
-}
-
-export def add [
-    query: string
-    ...tags: string
-    --dry-run (-d)
-] {
-    let dry_run_flag = if $dry_run { ["--dry-run"] } else { [] }
-    ^ctag add $query ...$tags --format json ...$dry_run_flag | from json
-}
-
-export def remove [
-    query: string
-    ...tags: string
-    --dry-run (-d)
-] {
-    let dry_run_flag = if $dry_run { ["--dry-run"] } else { [] }
-    ^ctag remove $query ...$tags --format json ...$dry_run_flag | from json
-}
-
-export def replace [
-    query: string
-    old_tag: string
-    new_tag: string
-    --dry-run (-d)
-] {
-    let dry_run_flag = if $dry_run { ["--dry-run"] } else { [] }
-    ^ctag replace $query $old_tag $new_tag --format json ...$dry_run_flag | from json
-}
-
-export def from-json [
-    file: path
-    --dry-run (-d)
-] {
-    let dry_run_flag = if $dry_run { ["--dry-run"] } else { [] }
-    ^ctag from-json $file --format json ...$dry_run_flag | from json
-}
-
-export def from-stdin-json [
-    --dry-run (-d)
-] {
-    let dry_run_flag = if $dry_run { ["--dry-run"] } else { [] }
-    $in | to json | ^ctag from-stdin-json --format json ...$dry_run_flag | from json
+    $raw_output | from json | format-output
 }

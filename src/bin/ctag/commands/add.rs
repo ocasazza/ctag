@@ -1,9 +1,9 @@
-use crate::api::ConfluenceClient;
-use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
 use colored::Colorize;
+use ctag::api::ConfluenceClient;
+use ctag::models::ProcessResults;
 use dialoguer::Confirm;
 
 #[derive(Args)]
@@ -44,7 +44,7 @@ pub fn run(
     client: &ConfluenceClient,
     dry_run: bool,
     show_progress: bool,
-    format: crate::models::OutputFormat,
+    format: ctag::models::OutputFormat,
 ) -> Result<()> {
     let verbose = format.is_verbose();
     if verbose {
@@ -163,9 +163,18 @@ pub fn run(
                 None => return crate::commands::ActionResult::Skipped,
             };
             if client.add_tags(page_id, &args.tags) {
+                let detail = ctag::models::ActionDetail {
+                    page_id: page_id.to_string(),
+                    title: page.title.as_deref().unwrap_or("Unknown").to_string(),
+                    space: page.space_name().to_string(),
+                    url: page.printable_clickable_title(client.base_url()),
+                    tags_added: args.tags.clone(),
+                    tags_removed: vec![],
+                };
                 crate::commands::ActionResult::Success {
                     added: args.tags.len(),
                     removed: 0,
+                    detail: Some(detail),
                 }
             } else {
                 crate::commands::ActionResult::Failed

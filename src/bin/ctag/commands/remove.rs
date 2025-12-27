@@ -1,10 +1,10 @@
-use crate::api::ConfluenceClient;
-use crate::models::sanitize_text;
-use crate::models::ProcessResults;
 use crate::ui;
 use anyhow::Result;
 use clap::Args;
 use colored::Colorize;
+use ctag::api::ConfluenceClient;
+use ctag::models::sanitize_text;
+use ctag::models::ProcessResults;
 use dialoguer::Confirm;
 
 #[derive(Args)]
@@ -51,7 +51,7 @@ pub fn run(
     client: &ConfluenceClient,
     dry_run: bool,
     show_progress: bool,
-    format: crate::models::OutputFormat,
+    format: ctag::models::OutputFormat,
 ) -> Result<()> {
     let verbose = format.is_verbose();
 
@@ -106,7 +106,7 @@ pub fn run(
 
             let tags_to_remove = if let Some(regexes) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id)?;
-                crate::api::filter_tags_by_regex(current_tags, regexes)
+                ctag::api::filter_tags_by_regex(current_tags, regexes)
             } else {
                 args.tags.clone()
             };
@@ -154,7 +154,7 @@ pub fn run(
 
             let tags_to_remove = if let Some(regexes) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id)?;
-                crate::api::filter_tags_by_regex(current_tags, regexes)
+                ctag::api::filter_tags_by_regex(current_tags, regexes)
             } else {
                 args.tags.clone()
             };
@@ -207,22 +207,18 @@ pub fn run(
                     break;
                 }
             }
-
             let success = client.remove_tags(page_id, &tags_to_remove);
             results.processed += 1;
-
             if success {
                 results.success += 1;
                 results.tags_removed += tags_to_remove.len();
             } else {
                 results.failed += 1;
             }
-
             if let Some(pb) = &progress {
                 pb.inc(1);
             }
         }
-
         if let Some(pb) = progress {
             pb.finish_with_message("Done");
         }
@@ -233,10 +229,9 @@ pub fn run(
                 Some(id) => id,
                 None => return crate::commands::ActionResult::Skipped,
             };
-
             let tags_to_remove = if let Some(regexes) = &compiled_regexes {
                 let current_tags = client.get_page_tags(page_id).unwrap_or_default();
-                crate::api::filter_tags_by_regex(current_tags, regexes)
+                ctag::api::filter_tags_by_regex(current_tags, regexes)
             } else {
                 args.tags.clone()
             };
@@ -246,18 +241,24 @@ pub fn run(
             }
 
             if client.remove_tags(page_id, &tags_to_remove) {
+                let detail = ctag::models::ActionDetail {
+                    page_id: page_id.to_string(),
+                    title: page.title.as_deref().unwrap_or("Unknown").to_string(),
+                    space: page.space_name().to_string(),
+                    url: page.printable_clickable_title(client.base_url()),
+                    tags_added: vec![],
+                    tags_removed: tags_to_remove.clone(),
+                };
                 crate::commands::ActionResult::Success {
                     added: 0,
                     removed: tags_to_remove.len(),
+                    detail: Some(detail),
                 }
             } else {
                 crate::commands::ActionResult::Failed
             }
         });
     }
-
-    // Display results
     ui::print_summary(&results, format);
-
     Ok(())
 }

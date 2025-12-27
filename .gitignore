@@ -5,3 +5,4 @@
 .env
 .vscode
 .pre-commit-config.yaml
+.ctag_nix_config.temp*.nu

@@ -129,6 +129,16 @@ pub struct LabelsResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActionDetail {
+    pub page_id: String,
+    pub title: String,
+    pub space: String,
+    pub url: String,
+    pub tags_added: Vec<String>,
+    pub tags_removed: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessResults {
     pub total: usize,
     pub processed: usize,
@@ -140,6 +150,8 @@ pub struct ProcessResults {
     pub tags_added: usize,
     #[serde(default)]
     pub tags_removed: usize,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub details: Vec<ActionDetail>,
 }
 
 impl ProcessResults {
@@ -153,6 +165,7 @@ impl ProcessResults {
             aborted: false,
             tags_added: 0,
             tags_removed: 0,
+            details: Vec::new(),
         }
     }
 }

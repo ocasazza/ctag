@@ -53,31 +53,50 @@ pub fn create_pagination_spinner(msg: &str) -> ProgressBar {
 }
 
 // Formatters for results
-
-pub fn print_summary(results: &crate::models::ProcessResults, format: crate::models::OutputFormat) {
+pub fn print_summary(results: &ctag::models::ProcessResults, format: ctag::models::OutputFormat) {
     match format {
-        crate::models::OutputFormat::Json => {
+        ctag::models::OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(results).unwrap());
         }
-        crate::models::OutputFormat::Csv => {
+        ctag::models::OutputFormat::Csv => {
+            #[derive(serde::Serialize)]
+            struct CsvSummary {
+                total: usize,
+                processed: usize,
+                skipped: usize,
+                success: usize,
+                failed: usize,
+                aborted: bool,
+                tags_added: usize,
+                tags_removed: usize,
+            }
+            let summary = CsvSummary {
+                total: results.total,
+                processed: results.processed,
+                skipped: results.skipped,
+                success: results.success,
+                failed: results.failed,
+                aborted: results.aborted,
+                tags_added: results.tags_added,
+                tags_removed: results.tags_removed,
+            };
             let mut wtr = csv::Writer::from_writer(std::io::stdout());
-            wtr.serialize(results).unwrap();
+            wtr.serialize(summary).unwrap();
             wtr.flush().unwrap();
         }
-        crate::models::OutputFormat::Verbose => {
+        ctag::models::OutputFormat::Verbose => {
             print_summary_table(results);
         }
-        crate::models::OutputFormat::Simple => {
+        ctag::models::OutputFormat::Simple => {
             print_summary_minimal(results);
         }
     }
 }
 
-fn print_summary_table(results: &crate::models::ProcessResults) {
+fn print_summary_table(results: &ctag::models::ProcessResults) {
     use comfy_table::modifiers::UTF8_ROUND_CORNERS;
     use comfy_table::presets::UTF8_FULL;
     use comfy_table::*;
-
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -112,7 +131,6 @@ fn print_summary_table(results: &crate::models::ProcessResults) {
         Cell::new("Failed").fg(Color::Red),
         Cell::new(results.failed.to_string()).fg(Color::Red),
     ]);
-
     if results.tags_added > 0 || results.tags_removed > 0 {
         table.add_row(vec![
             Cell::new("Tags Added").fg(Color::Green),
@@ -127,7 +145,7 @@ fn print_summary_table(results: &crate::models::ProcessResults) {
     println!("{table}");
 }
 
-pub fn print_summary_minimal(results: &crate::models::ProcessResults) {
+pub fn print_summary_minimal(results: &ctag::models::ProcessResults) {
     let mut parts = Vec::new();
 
     parts.push(format!(

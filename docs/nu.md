@@ -4,7 +4,11 @@
 
 ## Setup
 
-Import the module from the repository root:
+## Setup
+
+If you are using the Nix development shell (`nix develop .#nu`), the module is loaded automatically!
+
+If you are running manually:
 
 ```nu
 use nu/ctag.nu
@@ -14,7 +18,7 @@ use nu/ctag.nu
 
 ### Querying Tags
 
-Get all pages matching a specific CQL query. This returns a table with `id`, `title`, `space`, `tags`, and `ancestors`.
+Get all pages matching a specific CQL query. This returns a table with `id`, `title`, `space`, `tags`, `ancestors`, and `url`.
 
 ```nu
 ctag get "space = DOCS"

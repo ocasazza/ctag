@@ -1,9 +1,9 @@
-use crate::api::ConfluenceClient;
 use crate::commands::from_json::{process_single_command, JsonCommands};
-use crate::models::{OutputFormat, ProcessResults};
 use crate::ui;
 use anyhow::{Context, Result};
 use clap::Args;
+use ctag::api::ConfluenceClient;
+use ctag::models::{OutputFormat, ProcessResults};
 use std::io::{self, Read};
 
 #[derive(Args)]

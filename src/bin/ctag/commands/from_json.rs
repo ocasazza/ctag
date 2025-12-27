@@ -1,8 +1,8 @@
-use crate::api::ConfluenceClient;
-use crate::models::{OutputFormat, ProcessResults};
 use crate::ui;
 use anyhow::{Context, Result};
 use clap::Args;
+use ctag::api::ConfluenceClient;
+use ctag::models::{OutputFormat, ProcessResults};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
